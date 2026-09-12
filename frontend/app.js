@@ -16,6 +16,12 @@ function errorMessage(e) {
   return e instanceof Error ? e.message : String(e);
 }
 
+const backBtnHtml = '<button type="button" id="pageBack" class="ghost back-btn">← 返回</button>';
+function bindBack(fn) {
+  const btn = $('#pageBack');
+  if (btn) btn.onclick = fn;
+}
+
 async function home() {
   current = null;
   root.innerHTML = '<p>載入中…</p>';
@@ -48,7 +54,8 @@ async function openApp(id) {
     currentDef = await api.getApp(id);
     currentRecords = await api.listRecords(id);
   } catch (e) {
-    root.innerHTML = `<p class="error">無法載入 App：${esc(errorMessage(e))}</p>`;
+    root.innerHTML = `${backBtnHtml}<p class="error">無法載入 App：${esc(errorMessage(e))}</p>`;
+    bindBack(home);
     return;
   }
   renderApp();
@@ -57,7 +64,7 @@ async function openApp(id) {
 function renderApp() {
   const d = currentDef;
   const rs = currentRecords;
-  root.innerHTML = `<section><h1>${esc(d.app.name)}</h1><div class="actions"><button id="new">新增紀錄</button><button id="spec" class="secondary">查看 Spec</button><button id="editSpec" class="secondary">編輯 Spec</button><button id="json">匯出 JSON</button><button id="csv">匯出 CSV</button><button id="back" class="ghost">返回</button></div></section><section><h2>紀錄</h2>${
+  root.innerHTML = `${backBtnHtml}<section><h1>${esc(d.app.name)}</h1><div class="actions"><button id="new">新增紀錄</button><button id="spec" class="secondary">查看 Spec</button><button id="editSpec" class="secondary">編輯 Spec</button><button id="json">匯出 JSON</button><button id="csv">匯出 CSV</button><button id="back" class="ghost">返回</button></div></section><section><h2>紀錄</h2>${
     rs.length
       ? `<div class="cards">${rs
           .map(
@@ -73,6 +80,7 @@ function renderApp() {
   $('#json').onclick = () => download(`${current}.json`, JSON.stringify(rs, null, 2), 'application/json');
   $('#csv').onclick = () => exportCsv(d, rs);
   $('#back').onclick = home;
+  bindBack(home);
   document.querySelectorAll('[data-view]').forEach((x) => (x.onclick = () => renderView(x.dataset.view)));
   document.querySelectorAll('[data-edit]').forEach((x) => (x.onclick = () => form(x.dataset.edit)));
   document.querySelectorAll('[data-del]').forEach(
@@ -126,16 +134,18 @@ function viewFieldHtml(f, v) {
 function renderView(recordId) {
   const r = currentRecords.find((x) => x.id === recordId);
   if (!r) return renderApp();
-  root.innerHTML = `<section><h1>檢視紀錄</h1><div class="view-fields">${currentDef.fields
+  root.innerHTML = `${backBtnHtml}<section><h1>檢視紀錄</h1><div class="view-fields">${currentDef.fields
     .map((f) => viewFieldHtml(f, r.data[f.id]))
     .join('')}</div><div class="actions"><button id="viewEdit">編輯</button><button id="viewBack" class="ghost">返回</button></div></section>`;
   $('#viewEdit').onclick = () => form(recordId);
   $('#viewBack').onclick = () => renderApp();
+  bindBack(() => renderApp());
 }
 
 function renderSpecView() {
   const yamlText = yaml.dump(currentDef, { noRefs: true, lineWidth: 100 });
-  root.innerHTML = `<section><h1>${esc(currentDef.app.name)} — Spec</h1><p class="muted">這是這個 App 的 OpenForm Definition（YAML）。可以複製後貼給任何 LLM 當範例，請它照同樣的語法幫你產生自己想要收集的表單。</p><pre id="specText" class="spec-view">${esc(yamlText)}</pre><div class="actions"><button id="specCopy">複製</button><button id="specDownload" class="secondary">下載 YAML</button><button id="specBack" class="ghost">返回</button></div></section>`;
+  root.innerHTML = `${backBtnHtml}<section><h1>${esc(currentDef.app.name)} — Spec</h1><p class="muted">這是這個 App 的 OpenForm Definition（YAML）。可以複製後貼給任何 LLM 當範例，請它照同樣的語法幫你產生自己想要收集的表單。</p><pre id="specText" class="spec-view">${esc(yamlText)}</pre><div class="actions"><button id="specCopy">複製</button><button id="specDownload" class="secondary">下載 YAML</button><button id="specBack" class="ghost">返回</button></div></section>`;
+  bindBack(() => renderApp());
   $('#specCopy').onclick = async () => {
     try {
       await navigator.clipboard.writeText(yamlText);
@@ -319,11 +329,12 @@ function rebuildForm(def) {
 }
 
 function renderForm(d, old, values = old?.data || {}) {
-  root.innerHTML = `<section><h1>${old ? '編輯' : '新增'}紀錄</h1><form id="recordForm" class="form">${d.fields
+  root.innerHTML = `${backBtnHtml}<section><h1>${old ? '編輯' : '新增'}紀錄</h1><form id="recordForm" class="form">${d.fields
     .map((f) => fieldHtml(f, values[f.id]))
     .join('')}<div class="actions"><button type="submit">儲存</button><button type="button" id="cancel" class="ghost">取消</button></div></form></section>`;
   bindCollections(d);
   $('#cancel').onclick = () => renderApp();
+  bindBack(() => renderApp());
   $('#recordForm').onsubmit = async (e) => {
     e.preventDefault();
     const data = Object.fromEntries(d.fields.map((f) => [f.id, readField(f)]));
@@ -358,7 +369,7 @@ async function startConversation(d, old) {
 
 function askField(f, currentValue, progressText) {
   return new Promise((resolve) => {
-    root.innerHTML = `<section class="conversation-step"><p class="convo-progress">${esc(progressText)}</p><h1>${esc(f.label)}</h1><form id="convoForm">${fieldHtml(
+    root.innerHTML = `${backBtnHtml}<section class="conversation-step"><p class="convo-progress">${esc(progressText)}</p><h1>${esc(f.label)}</h1><form id="convoForm">${fieldHtml(
       f,
       currentValue,
       [f.id]
@@ -366,6 +377,7 @@ function askField(f, currentValue, progressText) {
     bindMediaInputs();
     bindRatingInputs();
     bindNumberValidation();
+    bindBack(() => renderApp());
     const submit = (action) => resolve({ action, value: readField(f, [f.id]) });
     $('#convoForm').onsubmit = (e) => {
       e.preventDefault();
@@ -377,9 +389,10 @@ function askField(f, currentValue, progressText) {
 
 function askAddItem(f, count) {
   return new Promise((resolve) => {
-    root.innerHTML = `<section class="conversation-step"><p class="convo-progress">${esc(f.label)}（目前 ${count} 筆）</p><h1>要新增一筆「${esc(
+    root.innerHTML = `${backBtnHtml}<section class="conversation-step"><p class="convo-progress">${esc(f.label)}（目前 ${count} 筆）</p><h1>要新增一筆「${esc(
       f.item_label || '項目'
     )}」嗎？</h1><div class="actions"><button id="convoAddYes">新增</button><button id="convoAddNo" class="secondary">${count > 0 ? '不用了，繼續下一步' : '略過'}</button></div></section>`;
+    bindBack(() => renderApp());
     $('#convoAddYes').onclick = () => resolve(true);
     $('#convoAddNo').onclick = () => resolve(false);
   });
@@ -408,9 +421,10 @@ async function runFieldSequence(fields, dataObj) {
 }
 
 function renderConversationReview(d, old, data) {
-  root.innerHTML = `<section><h1>確認紀錄</h1><p class="muted">檢查一下，沒問題再按「完成對話」儲存。</p><div class="view-fields">${d.fields
+  root.innerHTML = `${backBtnHtml}<section><h1>確認紀錄</h1><p class="muted">檢查一下，沒問題再按「完成對話」儲存。</p><div class="view-fields">${d.fields
     .map((f) => viewFieldHtml(f, data[f.id]))
     .join('')}</div><div class="actions"><button id="convoFinish">完成對話</button><button type="button" id="convoEditForm" class="secondary">改用表單微調</button><button type="button" id="convoCancel" class="ghost">取消</button></div></section>`;
+  bindBack(() => renderApp());
   $('#convoFinish').onclick = async () => {
     try {
       if (old) {
@@ -428,9 +442,10 @@ function renderConversationReview(d, old, data) {
 }
 
 function renderImportForm(draft = '') {
-  root.innerHTML = `<section><h1>匯入 Spec</h1><p class="muted">貼上 OpenForm Definition（YAML 或 JSON），驗證通過後會先預覽再建立 App。</p><textarea id="importText" spellcheck="false" style="min-height:320px;font-family:ui-monospace,monospace;font-size:13px">${esc(draft)}</textarea><div id="importResult"></div><div class="actions"><button id="importValidate">驗證</button><button type="button" id="importCancel" class="ghost">取消</button></div></section>`;
+  root.innerHTML = `${backBtnHtml}<section><h1>匯入 Spec</h1><p class="muted">貼上 OpenForm Definition（YAML 或 JSON），驗證通過後會先預覽再建立 App。</p><textarea id="importText" spellcheck="false" style="min-height:320px;font-family:ui-monospace,monospace;font-size:13px">${esc(draft)}</textarea><div id="importResult"></div><div class="actions"><button id="importValidate">驗證</button><button type="button" id="importCancel" class="ghost">取消</button></div></section>`;
   $('#importCancel').onclick = home;
   $('#importValidate').onclick = () => previewImport($('#importText').value);
+  bindBack(home);
 }
 
 function previewImport(raw) {
@@ -477,6 +492,7 @@ function exportCsv(d, rs) {
 let editorState = null;
 let editorIsNew = true;
 let editorOriginalVersion = null;
+let editorOriginalAppId = null;
 
 function blankField() {
   return { id: '', label: '', type: 'text' };
@@ -495,6 +511,7 @@ function fieldAtPath(path) {
 function renderSpecEditor(existingDef) {
   editorIsNew = !existingDef;
   editorOriginalVersion = existingDef ? existingDef.app.version : null;
+  editorOriginalAppId = existingDef ? existingDef.app.id : null;
   editorState = existingDef
     ? { ...JSON.parse(JSON.stringify(existingDef)), app: { ...JSON.parse(JSON.stringify(existingDef.app)), version: existingDef.app.version + 1 } }
     : { spec: 'openform/definition/v1', app: { id: '', name: '', version: 1 }, fields: [] };
@@ -531,9 +548,9 @@ function editorFieldHtml(f, path, index, count) {
   }<details class="advanced"><summary>進階設定</summary><label>欄位 ID（機器用，留空會自動產生；建立後不要再改）<input class="ef-id" placeholder="自動產生" value="${esc(f.id)}"></label><label>semantic_type（選填，給其他系統/LLM 辨識資料意義用）<input class="ef-semantic" value="${esc(f.semantic_type || '')}"></label><label>unit（選填，度量單位）<input class="ef-unit" value="${esc(f.unit || '')}"></label></details></div></div>`;
 }
 
-function renderEditor() {
+function visualPaneHtml() {
   const d = editorState;
-  root.innerHTML = `<section><h1>${editorIsNew ? '視覺化建立 App' : '編輯 Spec'}</h1><label>App 名稱<input id="edAppName" placeholder="例如：讀書紀錄" value="${esc(d.app.name)}"></label><label>App ID（機器用的英文代號，建立後不要再改）<input id="edAppId" placeholder="自動產生" value="${esc(
+  return `<label>App 名稱<input id="edAppName" placeholder="例如：讀書紀錄" value="${esc(d.app.name)}"></label><label>App ID（機器用的英文代號，建立後不要再改）<input id="edAppId" placeholder="自動產生" value="${esc(
     d.app.id
   )}" ${editorIsNew ? '' : 'disabled'}></label>${
     editorIsNew ? '' : `<p class="muted">目前是第 ${editorOriginalVersion} 版，儲存後會變成第 ${d.app.version} 版；舊資料不受影響。</p>`
@@ -541,8 +558,43 @@ function renderEditor() {
     !d.app.interaction_mode || d.app.interaction_mode === 'form' ? 'selected' : ''
   }>表單（一次填完）</option><option value="conversation" ${d.app.interaction_mode === 'conversation' ? 'selected' : ''}>對話（一次一題）</option></select></label><h2>欄位</h2><div class="editor-fields">${d.fields
     .map((f, i) => editorFieldHtml(f, [], i, d.fields.length))
-    .join('')}</div><button type="button" class="secondary" id="edAddField">＋ 新增欄位</button><div id="editorErrors"></div><div class="actions"><button id="edSave">儲存</button><button type="button" id="edCancel" class="ghost">取消</button></div></section>`;
+    .join('')}</div><button type="button" class="secondary" id="edAddField">＋ 新增欄位</button>`;
+}
+
+function renderVisualPane() {
+  $('#visualPane').innerHTML = visualPaneHtml();
   bindEditorEvents();
+}
+
+function syncSpecText() {
+  const ta = $('#specTextArea');
+  if (ta) ta.value = yaml.dump(editorState, { noRefs: true, lineWidth: 100 });
+}
+
+function renderEditor() {
+  root.innerHTML = `${backBtnHtml}<section><h1>${editorIsNew ? '視覺化建立 App' : '編輯 Spec'}</h1><p class="muted">左邊是 Spec（YAML），右邊是視覺化編輯——改任何一邊，另一邊會跟著同步。</p><div class="split-editor"><div class="spec-pane"><h2>Spec</h2><textarea id="specTextArea" spellcheck="false"></textarea><div class="spec-pane-error"></div></div><div class="visual-pane" id="visualPane"></div></div><div id="editorErrors"></div><div class="actions"><button id="edSave">儲存</button><button type="button" id="edCancel" class="ghost">取消</button></div></section>`;
+  renderVisualPane();
+  syncSpecText();
+  bindBack(() => (currentDef ? renderApp() : home()));
+  $('#specTextArea').oninput = (e) => {
+    const errBox = document.querySelector('.spec-pane-error');
+    let parsed;
+    try {
+      parsed = yaml.load(e.target.value);
+    } catch (err) {
+      errBox.textContent = '格式錯誤：' + errorMessage(err);
+      return;
+    }
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.fields) || typeof parsed.app !== 'object') {
+      errBox.textContent = '還不是完整的 Definition（需要 app 物件與 fields 陣列）';
+      return;
+    }
+    errBox.textContent = '';
+    editorState = parsed;
+    renderVisualPane();
+  };
+  $('#edSave').onclick = saveEditor;
+  $('#edCancel').onclick = () => (currentDef ? renderApp() : home());
 }
 
 function sanitizeId(v) {
@@ -553,19 +605,25 @@ function sanitizeId(v) {
 }
 
 function bindEditorEvents() {
-  $('#edAppName').oninput = (e) => (editorState.app.name = e.target.value);
+  $('#edAppName').oninput = (e) => {
+    editorState.app.name = e.target.value;
+    syncSpecText();
+  };
   $('#edAppId').oninput = (e) => {
     const clean = sanitizeId(e.target.value);
     if (clean !== e.target.value) e.target.value = clean;
     editorState.app.id = clean;
+    syncSpecText();
   };
-  $('#edInteractionMode').onchange = (e) => (editorState.app.interaction_mode = e.target.value);
+  $('#edInteractionMode').onchange = (e) => {
+    editorState.app.interaction_mode = e.target.value;
+    syncSpecText();
+  };
   $('#edAddField').onclick = () => {
     getFieldsRef([]).push(blankField());
-    renderEditor();
+    renderVisualPane();
+    syncSpecText();
   };
-  $('#edSave').onclick = saveEditor;
-  $('#edCancel').onclick = () => (currentDef ? renderApp() : home());
 
   document.querySelectorAll('.editor-field').forEach((card) => {
     const path = card.dataset.path.split(',').map(Number);
@@ -576,21 +634,28 @@ function bindEditorEvents() {
     head.querySelector('.move-up').onclick = () => {
       const fields = getFieldsRef(parentPath);
       [fields[index - 1], fields[index]] = [fields[index], fields[index - 1]];
-      renderEditor();
+      renderVisualPane();
+      syncSpecText();
     };
     head.querySelector('.move-down').onclick = () => {
       const fields = getFieldsRef(parentPath);
       [fields[index], fields[index + 1]] = [fields[index + 1], fields[index]];
-      renderEditor();
+      renderVisualPane();
+      syncSpecText();
     };
     head.querySelector('.ef-remove').onclick = () => {
       getFieldsRef(parentPath).splice(index, 1);
-      renderEditor();
+      renderVisualPane();
+      syncSpecText();
     };
-    head.querySelector('.ef-label').oninput = (e) => (f.label = e.target.value);
+    head.querySelector('.ef-label').oninput = (e) => {
+      f.label = e.target.value;
+      syncSpecText();
+    };
     head.querySelector('.ef-type').onchange = (e) => {
       f.type = e.target.value;
-      renderEditor();
+      renderVisualPane();
+      syncSpecText();
     };
 
     const body = card.querySelector(':scope > .editor-field-body');
@@ -598,24 +663,48 @@ function bindEditorEvents() {
       const clean = sanitizeId(e.target.value);
       if (clean !== e.target.value) e.target.value = clean;
       f.id = clean;
+      syncSpecText();
     };
-    body.querySelector('.ef-semantic').oninput = (e) => (f.semantic_type = e.target.value || undefined);
-    body.querySelector('.ef-unit').oninput = (e) => (f.unit = e.target.value || undefined);
+    body.querySelector('.ef-semantic').oninput = (e) => {
+      f.semantic_type = e.target.value || undefined;
+      syncSpecText();
+    };
+    body.querySelector('.ef-unit').oninput = (e) => {
+      f.unit = e.target.value || undefined;
+      syncSpecText();
+    };
     const min = body.querySelector('.ef-min');
-    if (min) min.oninput = (e) => (f.min = e.target.value === '' ? undefined : Number(e.target.value));
+    if (min)
+      min.oninput = (e) => {
+        f.min = e.target.value === '' ? undefined : Number(e.target.value);
+        syncSpecText();
+      };
     const max = body.querySelector('.ef-max');
-    if (max) max.oninput = (e) => (f.max = e.target.value === '' ? undefined : Number(e.target.value));
+    if (max)
+      max.oninput = (e) => {
+        f.max = e.target.value === '' ? undefined : Number(e.target.value);
+        syncSpecText();
+      };
     const auto = body.querySelector('.ef-autocomplete');
-    if (auto) auto.onchange = (e) => (f.autocomplete = e.target.checked || undefined);
+    if (auto)
+      auto.onchange = (e) => {
+        f.autocomplete = e.target.checked || undefined;
+        syncSpecText();
+      };
     const itemLabel = body.querySelector('.ef-itemlabel');
-    if (itemLabel) itemLabel.oninput = (e) => (f.item_label = e.target.value);
+    if (itemLabel)
+      itemLabel.oninput = (e) => {
+        f.item_label = e.target.value;
+        syncSpecText();
+      };
 
     const addSub = body.querySelector(':scope > .collection > .ef-add-subfield');
     if (addSub)
       addSub.onclick = () => {
         f.fields = f.fields || [];
         f.fields.push(blankField());
-        renderEditor();
+        renderVisualPane();
+        syncSpecText();
       };
 
     const optionsEditor = body.querySelector(':scope > .options-editor');
@@ -623,19 +712,29 @@ function bindEditorEvents() {
       optionsEditor.querySelector('.ef-opt-add').onclick = () => {
         f.options = f.options || [];
         f.options.push({ value: '', label: '' });
-        renderEditor();
+        renderVisualPane();
+        syncSpecText();
       };
-      optionsEditor
-        .querySelectorAll('.ef-opt-value')
-        .forEach((el) => (el.oninput = (e) => (f.options[Number(el.dataset.oi)].value = e.target.value)));
-      optionsEditor
-        .querySelectorAll('.ef-opt-label')
-        .forEach((el) => (el.oninput = (e) => (f.options[Number(el.dataset.oi)].label = e.target.value)));
+      optionsEditor.querySelectorAll('.ef-opt-value').forEach(
+        (el) =>
+          (el.oninput = (e) => {
+            f.options[Number(el.dataset.oi)].value = e.target.value;
+            syncSpecText();
+          })
+      );
+      optionsEditor.querySelectorAll('.ef-opt-label').forEach(
+        (el) =>
+          (el.oninput = (e) => {
+            f.options[Number(el.dataset.oi)].label = e.target.value;
+            syncSpecText();
+          })
+      );
       optionsEditor.querySelectorAll('.ef-opt-remove').forEach(
         (el) =>
           (el.onclick = () => {
             f.options.splice(Number(el.dataset.oi), 1);
-            renderEditor();
+            renderVisualPane();
+            syncSpecText();
           })
       );
     }
@@ -661,9 +760,14 @@ function fillMissingIds(fields) {
 
 async function saveEditor() {
   fillMissingIds(editorState.fields);
-  renderEditor();
-  const errs = validateDefinition(editorState);
+  renderVisualPane();
+  syncSpecText();
   const errBox = $('#editorErrors');
+  if (!editorIsNew && editorState.app.id !== editorOriginalAppId) {
+    errBox.innerHTML = `<p class="error">App ID 不能修改（原本是 ${esc(editorOriginalAppId)}），請改回來，或用「視覺化建立」新增一個獨立的 App。</p>`;
+    return;
+  }
+  const errs = validateDefinition(editorState);
   if (errs.length) {
     errBox.innerHTML = `<div class="error"><b>驗證失敗</b><ul>${errs.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>`;
     return;

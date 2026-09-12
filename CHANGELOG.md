@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.0] - 2026-09-12
+
+### Added
+- Split-pane spec editor: left side is an editable Spec (YAML) textarea, right side is the visual field editor, both bound to the same in-memory Definition and kept in sync live in both directions — edit either side, the other updates. The right side still validates through the same `validateDefinition`/`POST /api/apps` path as before.
+- A consistent top-left "← 返回" back button on every non-home screen (app screen, record view, spec view, record form, both conversation-mode screens, the conversation review screen, import spec, and the split editor), including the previously dead-end "failed to load app" error state.
+
+### Changed
+- Editing an existing app's spec now refuses to save if `app.id` was changed (possible via the raw YAML side of the split editor), since that would silently orphan the original app instead of updating it — shows a clear error instead.
+
 ## [0.5.2] - 2026-09-12
 
 ### Changed

@@ -118,6 +118,13 @@ header small {
   font-size: 12px;
 }
 
+.back-btn {
+  display: inline-flex;
+  margin-bottom: 12px;
+  padding-left: 4px;
+  padding-right: 10px;
+}
+
 .empty-state {
   color: var(--text-muted);
   text-align: center;
@@ -144,6 +151,10 @@ main {
   max-width: 720px;
   margin: auto;
   padding: 20px 16px 100px;
+}
+
+main:has(.split-editor) {
+  max-width: 1100px;
 }
 
 h1 {
@@ -462,6 +473,51 @@ input[type="checkbox"] {
 
 .view-field .collection-item .view-field > p {
   background: color-mix(in srgb, var(--accent) 3%, var(--surface));
+}
+
+.split-editor {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.spec-pane,
+.visual-pane {
+  min-width: 0;
+}
+
+.spec-pane {
+  position: sticky;
+  top: 78px;
+}
+
+.spec-pane textarea {
+  min-height: 70vh;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.spec-pane-error {
+  margin-top: 6px;
+}
+
+.spec-pane-error:empty {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .split-editor {
+    grid-template-columns: 1fr;
+  }
+  .spec-pane {
+    position: static;
+  }
+  .spec-pane textarea {
+    min-height: 260px;
+  }
 }
 
 .editor-fields {

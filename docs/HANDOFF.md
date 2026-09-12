@@ -1,5 +1,21 @@
 # OpenForm Handoff
 
+## 2026-09-12 — Split-pane Spec 編輯器 + 全站返回按鈕
+### 做了什麼
+- 使用者的理想是：建立/編輯 App 的地方，左邊是可編輯/可顯示的 Spec（YAML），右邊是視覺化編輯，兩邊同時可看可改、即時同步。實作：
+  - `renderEditor()` 現在渲染兩欄版面（`.split-editor`：`.spec-pane` textarea + `.visual-pane`），`main` 在含有 `.split-editor` 時用 `:has()` 選擇器放寬到 1100px（原本 720px 太窄放不下兩欄）。
+  - 右→左：任何在右側視覺化編輯器的操作（新增/刪除/搬移欄位、改型別、編輯屬性⋯）都會呼叫 `syncSpecText()` 把 `editorState` 重新 `yaml.dump` 回左邊 textarea。
+  - 左→右：textarea 的 `oninput` 嘗試 `yaml.load`，只要解析成功且形狀正確（`app` 物件 + `fields` 陣列）就直接把 `editorState` 換成解析出來的物件，重新渲染右側視覺化編輯器；解析失敗只顯示行內錯誤訊息，不去動右邊（避免打字打到一半整個炸掉）。
+  - 因為左邊可以直接改 `app.id`（右邊編輯既有 App 時這欄位是鎖住的），加了一個存檔前的檢查：編輯既有 App 時如果 `app.id` 被改掉，直接擋下來並提示「App ID 不能修改」，避免不小心把原本的 App 存成一個孤兒新 App。
+- 使用者要求「每個頁面左上角都要有返回按鈕」：加了共用的 `backBtnHtml`/`bindBack()`，套用到所有非首頁畫面（App 畫面、檢視紀錄、查看 Spec、新增/編輯紀錄表單、conversation 模式的兩種畫面、conversation 確認畫面、匯入 Spec、split editor）。順便抓到一個真的死路：`openApp()` 讀取 App 失敗時原本完全沒有任何按鈕可以離開那個錯誤畫面，現在也補上返回首頁的按鈕。
+
+### 實際驗證
+- `npm run build` + `npm test`（17 條）、backend 對真實 Postgres 的測試（5 條）全部通過。
+- 用 Playwright 實際測試 split editor：在左邊 YAML 把 App 名稱改掉，確認右邊 `#edAppName` 輸入框即時變成新名字；在右邊按「新增欄位」，確認左邊 YAML 文字即時多出新欄位的內容。也測了好幾個畫面（App 畫面、split editor、conversation 步驟）的「← 返回」按鈕都存在且點了會正確導航，全程 0 個 console error。
+
+### 現況
+已 commit/push；等 CI 綠燈、Render 部署完成。
+
 ## 2026-09-12 — 深色模式改中性灰黑
 ### 做了什麼
 - 上一輪把深色模式 accent 降飽和後，使用者看了實際截圖還是不喜歡這個青綠色系。問過使用者要換哪個方向（中性灰黑 / 藍色系 / 暖橘棕 / 自訂），選了「中性灰黑（接近無色）」。
