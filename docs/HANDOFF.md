@@ -1,5 +1,21 @@
 # OpenForm Handoff
 
+## 2026-09-12 — 視覺風格重新設計：文具手帳
+### 做了什麼
+- 使用者對前幾輪的視覺調整（配色微調）都不滿意，這次改用不同做法：先用 Artifact 做了一個「六種視覺方向」比較頁（公文表單、現場儀表、文具手帳、瑞士網格、臨床報告、復古收據），每格都是同一份真實內容（我的 App / 床墊試躺 / 健身紀錄 / 現場檢查紀錄）套完全不同的色彩/字體/版面系統，讓使用者直接比較挑選，而不是我一輪一輪盲猜。使用者選了「文具手帳（Stationery Journal）」。
+- 把選中的方向實作進真正的 `frontend/style.css`：
+  - 字體換成 Fraunces（標題用襯線字）+ Nunito Sans（內文），`frontend/index.html` 的 Google Fonts 連結也換掉。
+  - 淺色模式：牛皮紙色底、奶油卡片、暗梅紅（dusty plum）主色。深色模式沒有偷懶直接反轉顏色，而是設計成「晚上的皮革手帳」：暖黑棕底、暖白字、提亮過的梅紅/鼠尾草綠/赭黃供暗色背景使用。
+  - App 列表卡片加上常駐的彩色側邊色條（梅紅/鼠尾草綠/赭黃輪流），呼應手帳分頁索引的視覺概念；按鈕全部改成藥丸形狀（pill）。
+  - 因為整個 CSS 都是 token 化的（`var(--accent)`、`var(--surface)` 等），只需要重新定義 `:root` 的顏色/字體變數，绝大部分元件（表單、collection、rating 按鈕、split editor⋯）就自動套用新樣式，不用逐一修改每個規則。
+
+### 實際驗證
+- `npm run build` + `npm test`（17 條）、backend 對真實 Postgres 測試（5 條）全部通過。
+- 用 Playwright 對本地 dev server 實際截圖（首頁、App 畫面、split editor，light + dark 各一輪），確認新樣式渲染正確、0 個 console error；也實際打了一次 API 建立紀錄，確認樣式改動沒有影響任何功能。
+
+### 現況
+已 commit/push；等 CI 綠燈、Render 部署完成後可以實際在瀏覽器看新樣式。
+
 ## 2026-09-12 — Split-pane Spec 編輯器 + 全站返回按鈕
 ### 做了什麼
 - 使用者的理想是：建立/編輯 App 的地方，左邊是可編輯/可顯示的 Spec（YAML），右邊是視覺化編輯，兩邊同時可看可改、即時同步。實作：

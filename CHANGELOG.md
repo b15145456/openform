@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.7.0] - 2026-09-12
+
+### Changed
+- Full visual re-skin: "Stationery Journal" direction, chosen by the user from six mocked-up alternatives (paper form, industrial console, Swiss grid, clinical report, retro receipt, and this one). Fraunces (display serif) + Nunito Sans (body), warm kraft/cream palette with a dusty-plum accent in light mode and a warm dark "leather journal at night" palette in dark mode, pill-shaped buttons, and a rotating plum/sage/ochre color tab on each app card. Implemented entirely through the existing CSS custom-property token system, so no HTML/JS structure changed.
+
 ## [0.6.0] - 2026-09-12
 
 ### Added
