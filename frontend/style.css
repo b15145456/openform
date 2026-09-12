@@ -21,14 +21,14 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #17181a;
-    --surface: #1f2123;
-    --border: #33363a;
-    --text: #e8e8e6;
-    --text-muted: #96999c;
-    --accent: #3fb3a3;
-    --accent-hover: #55c2b3;
-    --accent-soft: #22322f;
+    --bg: #16171a;
+    --surface: #1c1d20;
+    --border: #2c2d31;
+    --text: #e6e6e5;
+    --text-muted: #8b8d91;
+    --accent: #6b7684;
+    --accent-hover: #838d99;
+    --accent-soft: #26282c;
     --danger: #e0817f;
     --danger-bg: #362221;
     --success: #6fb98d;

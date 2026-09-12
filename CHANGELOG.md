@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.2] - 2026-09-12
+
+### Changed
+- Dark mode's teal/mint accent replaced with a neutral slate gray-blue (`#6b7684`) per explicit user preference — no more colored glow anywhere in dark mode; hierarchy comes from spacing/weight, not hue. Light mode's teal is unchanged (no complaint there).
+
 ## [0.5.1] - 2026-09-12
 
 ### Fixed
