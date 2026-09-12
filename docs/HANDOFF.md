@@ -1,5 +1,29 @@
 # OpenForm Handoff
 
+## 2026-09-12 — 上傳修復、輸入體驗、唯讀檢視
+### 做了什麼
+- **抓到並修好上傳失敗的根因**：Render 上 `POST /api/uploads` 回傳模糊的 `{"error":"internal error"}`（500）。原因是 `openform-backend` 這個 Render service 還沒填 `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`/`AWS_ENDPOINT_URL_S3`/`AWS_REGION`（上一輪 HANDOFF 有請使用者手動填，但可能還沒填或還沒重新部署）。`getSignedUrl` 在憑證缺失時會直接丟例外，被 generic error handler 吃成 500。修法：`storage.js` 新增 `storageConfigured()`，upload route 在呼叫 S3 前先檢查，缺憑證直接回 503 + 中文說明訊息，之後不管誰踩到這個問題都能立刻知道原因，不用再靠猜。
+- 澄清一個誤解：上傳走的是 **Neon Object Storage**，不是真的 AWS S3——只是借用 S3 相容協定跟官方 `@aws-sdk/client-s3` 函式庫當 client，帳單/額度都算在既有的免費 Neon 帳號裡，沒有另外的 AWS 費用。
+- **輸入體驗三項改進**（使用者實際操作後回饋：送出才跳原生瀏覽器限制提示，太晚）：
+  1. `number`/`duration` 欄位在 `min`/`max` 存在時，輸入框下方常駐顯示範圍提示（如「範圍：1–10」），使用者打字當下只要超出範圍提示就即時變紅色（`oninput` 即時檢查，不必等送出）。
+  2. `rating` 欄位不再是裸的 `<input type=number>`，改成 `min..max` 的可點選數字按鈕列（segmented control），手機上更好點、更清楚目前選了幾分。
+  3. `text` 欄位新增可選的 `autocomplete: true` 屬性：UI 用 HTML `<datalist>` 建議這個 App 過去在該欄位輸入過的值（從已載入的 Records 動態算出，不是寫死在 Definition 裡的固定選項）。Mattress 範本的 `store`、`brand` 已套用——同一家店問好幾張床墊時，店名/常見品牌不用每次重打。目前只支援頂層欄位（不支援 collection 巢狀欄位內的 autocomplete，屬已知限制）。
+- **唯讀檢視**：紀錄列表每筆多一個「檢視」按鈕，唯讀顯示所有欄位（含巢狀 collection、media 預覽），不用先進可編輯的表單畫面才能看內容；檢視畫面內也有「編輯」捷徑可以直接切換進表單。
+- `docs/openform-definition.md` 補上 `autocomplete` 屬性說明與 rating/number hint 行為，並更新給 LLM 的 prompt 模板一併提到這兩個屬性。
+
+### 實際驗證
+- 前端 `npm run build` + `npm test`（10 條 shared tests）通過。
+- Backend 測試（5 條）在**沒有** AWS 憑證的情況下用 Docker Postgres 跑過，確認新的 503 guard 不會弄壞既有的 400 驗證測試；另外用 curl 實際打過一次沒憑證的 `/api/uploads`，確認回傳的是清楚的 503 中文訊息而不是模糊的 500。
+- 尚未在 Render 上實際重新驗證上傳是否已修好——那要等使用者確認 Render 的 4 個 AWS_* 環境變數已經填好、服務已重新部署後才能測。
+
+### 現況
+本輪修改已經 commit，準備 push 到 GitHub 觸發 CI 與 Render 自動部署。
+
+### 下一步
+1. push 後等 CI 綠燈，再等 Render 自動部署完成，實際 curl 測試 `/api/uploads` 是否已經不再是 503（代表 AWS_* 環境變數確實生效）。
+2. 手機上實際測一次上傳一張床墊照片、用「檢視」看一次已存的紀錄。
+3. `location`/`barcode`/`signature`、`autocomplete` 支援 collection 巢狀欄位，仍是待辦。
+
 ## 2026-09-12 — Render 上線、UI 修復、Media 上傳、Spec 可視化
 ### 做了什麼
 - **Render 部署完成**：`openform-backend`（Node web service）與 `openform-frontend`（static site）都已建立並上線，`render.yaml` 曾因 static site 不接受 `plan: free` 欄位而失敗一次，移除該欄位後成功。環境變數（`DATABASE_URL`、`FRONTEND_ORIGIN`、`VITE_API_URL`）都已回填，CORS 驗證正常。

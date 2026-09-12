@@ -61,7 +61,7 @@ function renderApp() {
       ? `<div class="cards">${rs
           .map(
             (r) =>
-              `<div class="card"><b>${esc(r.data.brand || r.data.store || r.id)}</b><span>${new Date(r.updated_at).toLocaleString()}</span><div class="actions"><button data-edit="${esc(r.id)}">編輯</button><button class="danger" data-del="${esc(r.id)}">刪除</button></div></div>`
+              `<div class="card"><b>${esc(r.data.brand || r.data.store || r.id)}</b><span>${new Date(r.updated_at).toLocaleString()}</span><div class="actions"><button class="secondary" data-view="${esc(r.id)}">檢視</button><button data-edit="${esc(r.id)}">編輯</button><button class="danger" data-del="${esc(r.id)}">刪除</button></div></div>`
           )
           .join('')}</div>`
       : '<p class="empty-state">尚無紀錄，點「新增紀錄」開始。</p>'
@@ -71,6 +71,7 @@ function renderApp() {
   $('#json').onclick = () => download(`${current}.json`, JSON.stringify(rs, null, 2), 'application/json');
   $('#csv').onclick = () => exportCsv(d, rs);
   $('#back').onclick = home;
+  document.querySelectorAll('[data-view]').forEach((x) => (x.onclick = () => renderView(x.dataset.view)));
   document.querySelectorAll('[data-edit]').forEach((x) => (x.onclick = () => form(x.dataset.edit)));
   document.querySelectorAll('[data-del]').forEach(
     (x) =>
@@ -84,6 +85,50 @@ function renderApp() {
         }
       })
   );
+}
+
+function viewFieldHtml(f, v) {
+  const empty = '<p class="muted">（無）</p>';
+  if (f.type === 'collection') {
+    const items = Array.isArray(v) ? v : [];
+    return `<div class="view-field"><label>${esc(f.label)}</label>${
+      items.length
+        ? items
+            .map(
+              (item, i) =>
+                `<div class="collection-item"><strong>${esc(f.item_label || '項目')} ${i + 1}</strong>${(f.fields || [])
+                  .map((x) => viewFieldHtml(x, item?.[x.id]))
+                  .join('')}</div>`
+            )
+            .join('')
+        : empty
+    }</div>`;
+  }
+  if (['image', 'video', 'audio'].includes(f.type)) {
+    return `<div class="view-field"><label>${esc(f.label)}</label>${v ? mediaPreviewHtml(f.type, v) : empty}</div>`;
+  }
+  if (f.type === 'boolean') return `<div class="view-field"><label>${esc(f.label)}</label><p>${v ? '是' : '否'}</p></div>`;
+  if (f.type === 'select') {
+    const opt = (f.options || []).find((o) => String(o.value) === String(v));
+    return `<div class="view-field"><label>${esc(f.label)}</label>${v == null || v === '' ? empty : `<p>${esc(opt ? opt.label : v)}</p>`}</div>`;
+  }
+  if (f.type === 'multi_select') {
+    const vals = Array.isArray(v) ? v : [];
+    if (!vals.length) return `<div class="view-field"><label>${esc(f.label)}</label>${empty}</div>`;
+    const labels = vals.map((val) => (f.options || []).find((o) => String(o.value) === String(val))?.label ?? val);
+    return `<div class="view-field"><label>${esc(f.label)}</label><p>${labels.map(esc).join('、')}</p></div>`;
+  }
+  return `<div class="view-field"><label>${esc(f.label)}</label>${v == null || v === '' ? empty : `<p>${esc(v)}</p>`}</div>`;
+}
+
+function renderView(recordId) {
+  const r = currentRecords.find((x) => x.id === recordId);
+  if (!r) return renderApp();
+  root.innerHTML = `<section><h1>檢視紀錄</h1><div class="view-fields">${currentDef.fields
+    .map((f) => viewFieldHtml(f, r.data[f.id]))
+    .join('')}</div><div class="actions"><button id="viewEdit">編輯</button><button id="viewBack" class="ghost">返回</button></div></section>`;
+  $('#viewEdit').onclick = () => form(recordId);
+  $('#viewBack').onclick = () => renderApp();
 }
 
 function renderSpecView() {
@@ -116,6 +161,22 @@ function fieldHtml(f, v = '', p = [f.id]) {
     const accept = { image: 'image/*', video: 'video/*', audio: 'audio/*' }[f.type];
     return `<label>${esc(f.label)}<div class="media-field" data-media="${id}"><input type="hidden" id="${id}" value="${esc(v)}"><div class="media-preview">${mediaPreviewHtml(f.type, v)}</div><input type="file" accept="${accept}" class="media-input" data-target="${id}" data-type="${f.type}"><p class="media-status muted"></p></div></label>`;
   }
+  if (f.type === 'rating') {
+    const min = f.min ?? 1;
+    const max = f.max ?? 5;
+    const opts = [];
+    for (let n = min; n <= max; n++) opts.push(n);
+    return `<label>${esc(f.label)}<div class="rating-control" data-rating="${id}"><input type="hidden" id="${id}" value="${esc(v)}">${opts
+      .map((n) => `<button type="button" class="rating-btn${String(v) === String(n) ? ' active' : ''}" data-value="${n}">${n}</button>`)
+      .join('')}</div></label>`;
+  }
+  if (f.type === 'text' && f.autocomplete && p.length === 1) {
+    const dlId = `${id}_list`;
+    const suggestions = [...new Set(currentRecords.map((r) => r.data[f.id]).filter((x) => x != null && x !== ''))];
+    return `<label>${esc(f.label)}<input id="${id}" list="${dlId}" value="${esc(v)}">${
+      suggestions.length ? `<datalist id="${dlId}">${suggestions.map((s) => `<option value="${esc(s)}">`).join('')}</datalist>` : ''
+    }</label>`;
+  }
   if (f.type === 'textarea') return `<label>${esc(f.label)}<textarea id="${id}">${esc(v)}</textarea></label>`;
   if (f.type === 'boolean') return `<label><input id="${id}" type="checkbox" ${v ? 'checked' : ''}> ${esc(f.label)}</label>`;
   if (f.type === 'select')
@@ -126,8 +187,15 @@ function fieldHtml(f, v = '', p = [f.id]) {
     return `<label>${esc(f.label)}<select id="${id}" multiple>${(f.options || [])
       .map((o) => `<option value="${esc(o.value)}" ${Array.isArray(v) && v.includes(o.value) ? 'selected' : ''}>${esc(o.label)}</option>`)
       .join('')}</select></label>`;
-  const t = { number: 'number', rating: 'number', date: 'date', time: 'time', datetime: 'datetime-local', duration: 'number' }[f.type] || 'text';
-  return `<label>${esc(f.label)}<input id="${id}" type="${t}" value="${esc(v)}" ${f.min != null ? `min="${f.min}"` : ''} ${f.max != null ? `max="${f.max}"` : ''}></label>`;
+  const t = { number: 'number', date: 'date', time: 'time', datetime: 'datetime-local', duration: 'number' }[f.type] || 'text';
+  const hint = ['number', 'duration'].includes(f.type) ? numberHint(f) : '';
+  return `<label>${esc(f.label)}<input id="${id}" type="${t}" value="${esc(v)}" ${f.min != null ? `min="${f.min}"` : ''} ${f.max != null ? `max="${f.max}"` : ''}>${hint ? `<small class="field-hint">${esc(hint)}</small>` : ''}</label>`;
+}
+
+function numberHint(f) {
+  if (f.min == null && f.max == null) return '';
+  if (f.min != null && f.max != null) return `範圍：${f.min}–${f.max}`;
+  return f.min != null ? `最小值：${f.min}` : `最大值：${f.max}`;
 }
 
 function mediaPreviewHtml(type, url) {
@@ -160,6 +228,34 @@ function bindMediaInputs() {
   });
 }
 
+function bindRatingInputs() {
+  document.querySelectorAll('.rating-control').forEach((wrapper) => {
+    const hidden = wrapper.querySelector('input[type="hidden"]');
+    wrapper.querySelectorAll('.rating-btn').forEach((btn) => {
+      btn.onclick = () => {
+        hidden.value = btn.dataset.value;
+        wrapper.querySelectorAll('.rating-btn').forEach((b) => b.classList.toggle('active', b === btn));
+      };
+    });
+  });
+}
+
+function bindNumberValidation() {
+  document.querySelectorAll('input[type="number"]').forEach((el) => {
+    const hint = el.parentElement.querySelector('.field-hint');
+    if (!hint) return;
+    const check = () => {
+      const min = el.min !== '' ? Number(el.min) : null;
+      const max = el.max !== '' ? Number(el.max) : null;
+      const val = el.value === '' ? null : Number(el.value);
+      const outOfRange = val !== null && ((min !== null && val < min) || (max !== null && val > max));
+      hint.classList.toggle('invalid', outOfRange);
+    };
+    el.oninput = check;
+    check();
+  });
+}
+
 function collectionItem(f, v, p, i) {
   return `<div class="collection-item" data-index="${i}"><div class="collection-head"><strong>${esc(f.item_label || '項目')} ${i + 1}</strong><button type="button" class="danger remove-item">移除</button></div>${(f.fields || [])
     .map((x) => fieldHtml(x, v?.[x.id], [...p, x.id]))
@@ -179,6 +275,8 @@ function getField(def, path) {
 
 function bindCollections(def) {
   bindMediaInputs();
+  bindRatingInputs();
+  bindNumberValidation();
   document.querySelectorAll('.add-item').forEach(
     (b) =>
       (b.onclick = () => {

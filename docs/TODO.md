@@ -20,6 +20,11 @@
 - [x] Mattress / Workout / Inspection templates（mattress/workout 因新增 photo/form_video 欄位升到 version 2）。
 - [ ] templates 對應 examples。
 - [x] App 畫面可以查看/複製/下載自己的 Definition Spec（YAML），方便貼給外部 LLM 當範例。
+- [x] `rating` 欄位改成可點選的數字按鈕（1..max），不再是裸的數字輸入框。
+- [x] `number`/`duration` 欄位即時顯示 min/max 範圍提示，超出範圍即時標紅（不用等送出才跳原生瀏覽器提示）。
+- [x] `text` 欄位可標記 `autocomplete: true`，UI 用 datalist 建議這個 App 裡該欄位過去輸入過的值（目前只支援頂層欄位，不含 collection 巢狀欄位）；mattress 範本的 `store`/`brand` 已套用。
+- [x] 紀錄列表新增「檢視」按鈕，唯讀顯示所有欄位（含 media 預覽），不用先進編輯畫面。
+- [x] `/api/uploads` 在缺少物件儲存憑證時回傳明確的 503 訊息，不再是模糊的「internal error」。
 
 ## P2 — Production
 - [ ] k3s/Kubernetes target。

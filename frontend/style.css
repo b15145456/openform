@@ -373,6 +373,26 @@ input[type="checkbox"] {
   margin: 10px 0;
 }
 
+.view-field {
+  margin: 14px 0;
+}
+
+.view-field > label {
+  margin-bottom: 5px;
+}
+
+.view-field > p {
+  margin: 0;
+  padding: 11px 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.view-field .collection-item .view-field > p {
+  background: color-mix(in srgb, var(--accent) 3%, var(--surface));
+}
+
 .spec-view {
   white-space: pre-wrap;
   word-break: break-word;
@@ -386,6 +406,43 @@ input[type="checkbox"] {
   overflow: auto;
   max-height: 60vh;
   box-shadow: var(--shadow-sm);
+}
+
+.field-hint {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.field-hint.invalid {
+  color: var(--danger);
+  font-weight: 650;
+}
+
+.rating-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rating-btn {
+  min-width: 40px;
+  padding: 8px 0;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-weight: 650;
+}
+
+.rating-btn:hover {
+  background: var(--accent-soft);
+}
+
+.rating-btn.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
 }
 
 .media-field {

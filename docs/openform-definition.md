@@ -51,9 +51,13 @@ min / max:     number, optional — for number/rating
 options:       array of {value, label}, required for select/multi_select
 fields:        array of field objects, required for collection
 item_label:    string, optional — label for one item in a collection ("動作", "組")
+autocomplete:  boolean, optional — for a top-level (non-nested) text field only. Suggests
+               previously entered values for this field, pulled from this app's own
+               existing Records (not from the Definition) — for a value you'll type
+               again and again (store name, brand) but that isn't a fixed enum.
 ```
 
-Field objects allow additional vendor/UI-hint properties beyond this list (the schema does not close them), but the ones above are the only ones the Runtime currently acts on.
+Field objects allow additional vendor/UI-hint properties beyond this list (the schema does not close them), but the ones above are the only ones the Runtime currently acts on. `min`/`max` on a `number` or `duration` field also get a live client-side hint and out-of-range warning as the user types — not just on submit. A `rating` field renders as a row of selectable number buttons from `min` to `max` (default 1–5) rather than a raw numeric input.
 
 ## Field types (v1)
 
@@ -125,7 +129,7 @@ Anything not on that list must use the `custom.` prefix (e.g. `custom.vendor_cod
 This format is intentionally generic — it is not tied to mattresses, workouts, or any one domain. Give an LLM a prompt like this (paste the rules above, or just this repo's `docs/openform-definition.md`, as context) to get a Definition for *any* data-collection use case:
 
 > Generate an `openform/definition/v1` YAML Definition for: **{describe what you want to collect, e.g. "tracking books I've read: title, author, rating, date finished, notes"}**.
-> Rules: output only the YAML, no prose. `app.id` is snake_case and stable. Every field has a snake_case `id` and a human `label`. Use `select`/`multi_select` with stable `value`s (never store a label as data). Use `collection` for repeating structure. Only use these field types: text, textarea, number, rating, select, multi_select, boolean, date, time, datetime, duration, image, video, audio, location, barcode, signature, collection. Do not include any JavaScript, shell, SQL, or executable expressions — this is a pure data description.
+> Rules: output only the YAML, no prose. `app.id` is snake_case and stable. Every field has a snake_case `id` and a human `label`. Use `select`/`multi_select` with stable `value`s (never store a label as data). Use `collection` for repeating structure. Set `min`/`max` on any `number`/`rating`/`duration` field that has a natural range. Mark a `text` field `autocomplete: true` if the user will type the same handful of values repeatedly (e.g. store name) but it isn't a fixed enum. Only use these field types: text, textarea, number, rating, select, multi_select, boolean, date, time, datetime, duration, image, video, audio, location, barcode, signature, collection. Do not include any JavaScript, shell, SQL, or executable expressions — this is a pure data description.
 
 The result pastes directly into OpenForm's "匯入 Spec" screen, which validates it (`validateDefinition`) and shows a preview (app name, version, field count) before creating the app — nothing is trusted purely because an LLM produced it.
 

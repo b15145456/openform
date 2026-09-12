@@ -4,8 +4,8 @@ app:
   name: 床墊試躺 / 詢價紀錄
   version: 2
 fields:
-  - { id: store, label: 店家, type: text }
-  - { id: brand, label: 品牌, type: text }
+  - { id: store, label: 店家, type: text, autocomplete: true }
+  - { id: brand, label: 品牌, type: text, autocomplete: true }
   - { id: model, label: 型號, type: text }
   - { id: size, label: 尺寸, type: text }
   - { id: photo, label: 照片, type: image, semantic_type: media.image }

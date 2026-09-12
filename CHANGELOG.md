@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.1] - 2026-09-12
+
+### Added
+- Read-only "檢視" (view) button on each record, alongside edit/delete — shows all fields (including nested collections and media previews) without opening the editable form.
+- `rating` fields render as a row of selectable number buttons instead of a raw numeric input.
+- `number`/`duration` fields with `min`/`max` show a persistent range hint and flag out-of-range values as the user types, instead of only on submit via the browser's native validation popup.
+- `text` fields can be marked `autocomplete: true` to suggest previously entered values for that field (pulled from the app's own records, not hardcoded in the Definition) via a `<datalist>`. Applied to Mattress's `store`/`brand`.
+
+### Fixed
+- `POST /api/uploads` returned an opaque 500 when the Neon Object Storage credentials weren't configured on the deployment; it now checks upfront and returns a clear 503 with a Chinese explanation instead.
+
 ## [0.4.0] - 2026-09-12
 
 ### Added

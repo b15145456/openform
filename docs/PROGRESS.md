@@ -1,5 +1,10 @@
 # OpenForm Progress
 
+## 2026-09-12 — Input UX pass, upload diagnostics, read-only view
+- Diagnosed and fixed a real upload failure on the live deployment: missing object-storage credentials produced an opaque 500; the upload route now checks upfront and returns a clear 503.
+- Three input-experience improvements driven by actual usage: live (not submit-time) range hints for number/duration fields, `rating` as clickable number buttons instead of a raw input, and `autocomplete` suggestions on text fields sourced from the app's own existing records.
+- Added a read-only record view, separate from the edit form.
+
 ## 2026-09-12 — Live on Render, media uploads, LLM-ready spec docs
 - OpenForm is live and usable: `openform-frontend`/`openform-backend` on Render, Neon Postgres for data, Neon Object Storage for media — all verified with real traffic, not just local tests.
 - Fixed three real bugs a mobile smoke test caught (invisible card text, prompt()-based import, missing Workout/Inspection seeding).

@@ -5,6 +5,10 @@ const BUCKET = 'media';
 
 const s3 = new S3Client({ forcePathStyle: true });
 
+export function storageConfigured() {
+  return Boolean(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && process.env.AWS_ENDPOINT_URL_S3);
+}
+
 export async function presignUpload(key, contentType) {
   const command = new PutObjectCommand({ Bucket: BUCKET, Key: key, ContentType: contentType });
   return getSignedUrl(s3, command, { expiresIn: 300 });
