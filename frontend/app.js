@@ -50,21 +50,30 @@ async function home() {
 async function openApp(id) {
   current = id;
   root.innerHTML = '<p>載入中…</p>';
+  const slowNotice = setTimeout(() => {
+    if (root.innerHTML === '<p>載入中…</p>') root.innerHTML = '<p>載入中…（如果伺服器剛醒來，免費方案第一次喚醒約需 30–60 秒）</p>';
+  }, 4000);
   try {
-    currentDef = await api.getApp(id);
-    currentRecords = await api.listRecords(id);
+    [currentDef, currentRecords] = await Promise.all([api.getApp(id), api.listRecords(id)]);
   } catch (e) {
     root.innerHTML = `${backBtnHtml}<p class="error">無法載入 App：${esc(errorMessage(e))}</p>`;
     bindBack(home);
     return;
+  } finally {
+    clearTimeout(slowNotice);
   }
+  renderApp();
+}
+
+async function refreshRecords() {
+  currentRecords = await api.listRecords(current);
   renderApp();
 }
 
 function renderApp() {
   const d = currentDef;
   const rs = currentRecords;
-  root.innerHTML = `${backBtnHtml}<section><h1>${esc(d.app.name)}</h1><div class="actions"><button id="new">新增紀錄</button><button id="spec" class="secondary">查看 Spec</button><button id="editSpec" class="secondary">編輯 Spec</button><button id="json">匯出 JSON</button><button id="csv">匯出 CSV</button><button id="back" class="ghost">返回</button></div></section><section><h2>紀錄</h2>${
+  root.innerHTML = `${backBtnHtml}<section><h1>${esc(d.app.name)}</h1><div class="actions"><button id="new">新增紀錄</button><button id="spec" class="secondary">查看 Spec</button><button id="editSpec" class="secondary">編輯 Spec</button><button id="json">匯出 JSON</button><button id="csv">匯出 CSV</button><button id="deleteApp" class="danger">刪除 App</button><button id="back" class="ghost">返回</button></div></section><section><h2>紀錄</h2>${
     rs.length
       ? `<div class="cards">${rs
           .map(
@@ -79,6 +88,15 @@ function renderApp() {
   $('#editSpec').onclick = () => renderSpecEditor(d);
   $('#json').onclick = () => download(`${current}.json`, JSON.stringify(rs, null, 2), 'application/json');
   $('#csv').onclick = () => exportCsv(d, rs);
+  $('#deleteApp').onclick = async () => {
+    if (!confirm(`確定要刪除「${d.app.name}」嗎？裡面的 ${rs.length} 筆紀錄會一起被永久刪除，無法復原。`)) return;
+    try {
+      await api.deleteApp(current);
+      await home();
+    } catch (e) {
+      alert('刪除失敗：' + errorMessage(e));
+    }
+  };
   $('#back').onclick = home;
   bindBack(home);
   document.querySelectorAll('[data-view]').forEach((x) => (x.onclick = () => renderView(x.dataset.view)));
@@ -89,7 +107,7 @@ function renderApp() {
         if (!confirm('確定刪除？')) return;
         try {
           await api.deleteRecord(current, x.dataset.del);
-          await openApp(current);
+          await refreshRecords();
         } catch (e) {
           alert('刪除失敗：' + errorMessage(e));
         }
@@ -344,7 +362,7 @@ function renderForm(d, old, values = old?.data || {}) {
       } else {
         await api.createRecord(current, data);
       }
-      await openApp(current);
+      await refreshRecords();
     } catch (err) {
       alert('儲存失敗：' + errorMessage(err));
     }
@@ -432,7 +450,7 @@ function renderConversationReview(d, old, data) {
       } else {
         await api.createRecord(current, data);
       }
-      await openApp(current);
+      await refreshRecords();
     } catch (e) {
       alert('儲存失敗：' + errorMessage(e));
     }
@@ -448,7 +466,7 @@ function renderImportForm(draft = '') {
   bindBack(home);
 }
 
-function previewImport(raw) {
+async function previewImport(raw) {
   const resultBox = $('#importResult');
   let d;
   try {
@@ -463,7 +481,20 @@ function previewImport(raw) {
     return;
   }
   const fieldCount = d.fields.length;
-  resultBox.innerHTML = `<div class="success"><b>${esc(d.app.name)}</b>（id: ${esc(d.app.id)}, version: ${d.app.version}）— ${fieldCount} 個欄位</div><div class="actions"><button id="importConfirm">確認建立</button></div>`;
+  let existing = null;
+  try {
+    existing = await api.getApp(d.app.id);
+  } catch {
+    /* no existing app with this id, that's the normal case */
+  }
+  const warning = existing
+    ? `<div class="error"><b>注意：</b>已經有一個 App「${esc(existing.app.name)}」用同樣的 id（${esc(
+        d.app.id
+      )}），建立後會覆蓋掉它的 Spec（裡面已存的紀錄不會被刪除，但欄位定義會換成這份新的）。</div>`
+    : '';
+  resultBox.innerHTML = `${warning}<div class="success"><b>${esc(d.app.name)}</b>（id: ${esc(d.app.id)}, version: ${d.app.version}）— ${fieldCount} 個欄位</div><div class="actions"><button id="importConfirm">${
+    existing ? '確認覆蓋' : '確認建立'
+  }</button></div>`;
   $('#importConfirm').onclick = async () => {
     try {
       await api.createApp(d);

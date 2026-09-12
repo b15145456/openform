@@ -39,4 +39,6 @@
 
 ## P3 — Shared data
 - [x] Backend/API/DB（Express + Postgres，見 `backend/`）。
-- [ ] Auth（目前是單一共享工作區，沒有帳號/資料隔離）。
+- [ ] Auth + RBAC（目前是單一共享工作區，沒有帳號/資料隔離；使用者要求要準備分享給同事，正在做完整的 RBAC + audit log，見下一則 HANDOFF）。
+- [x] 刪除 App（含 cascade 刪除底下所有紀錄）。
+- [x] 匯入 Spec 如果 id 撞到既有 App 會先警告，不會無聲覆蓋。

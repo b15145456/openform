@@ -63,3 +63,24 @@ test('POST /api/apps rejects invalid definition', async () => {
     });
   assert.equal(res.status, 400);
 });
+
+test('DELETE /api/apps/:id removes the app and cascades its records', async () => {
+  const def = {
+    spec: 'openform/definition/v1',
+    app: { id: 'deletable_app', name: 'Deletable', version: 1 },
+    fields: [{ id: 'x', label: 'X', type: 'text' }],
+  };
+  await request(app).post('/api/apps').send(def);
+  await request(app).post('/api/apps/deletable_app/records').send({ data: { x: 'hi' } });
+
+  const del = await request(app).delete('/api/apps/deletable_app');
+  assert.equal(del.status, 204);
+
+  const getApp = await request(app).get('/api/apps/deletable_app');
+  assert.equal(getApp.status, 404);
+  const records = await request(app).get('/api/apps/deletable_app/records');
+  assert.deepEqual(records.body, []);
+
+  const again = await request(app).delete('/api/apps/deletable_app');
+  assert.equal(again.status, 404);
+});

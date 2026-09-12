@@ -46,4 +46,14 @@ appsRouter.post('/', async (req, res, next) => {
   }
 });
 
+appsRouter.delete('/:id', async (req, res, next) => {
+  try {
+    const { rowCount } = await pool.query('DELETE FROM apps WHERE id = $1', [req.params.id]);
+    if (!rowCount) return res.status(404).json({ error: 'app not found' });
+    res.status(204).end();
+  } catch (e) {
+    next(e);
+  }
+});
+
 export default appsRouter;

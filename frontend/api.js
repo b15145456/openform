@@ -17,6 +17,7 @@ export const api = {
   listApps: () => request('/api/apps'),
   getApp: (id) => request(`/api/apps/${id}`),
   createApp: (definition) => request('/api/apps', { method: 'POST', body: JSON.stringify(definition) }),
+  deleteApp: (id) => request(`/api/apps/${id}`, { method: 'DELETE' }),
   listRecords: (appId) => request(`/api/apps/${appId}/records`),
   createRecord: (appId, data) => request(`/api/apps/${appId}/records`, { method: 'POST', body: JSON.stringify({ data }) }),
   updateRecord: (appId, recordId, data) => request(`/api/apps/${appId}/records/${recordId}`, { method: 'PUT', body: JSON.stringify({ data }) }),

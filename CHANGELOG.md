@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.7.1] - 2026-09-12
+
+### Added
+- `DELETE /api/apps/:id` — there was previously no way to delete an App at all, only individual records (records cascade-delete automatically via the existing FK). Added a "刪除 App" button on the app screen with a clear confirmation.
+- Importing a Spec whose `app.id` collides with an existing app now warns before overwriting it, instead of silently replacing the existing app's definition.
+
+### Fixed
+- `openApp()` fetched the Definition and the record list sequentially (two round trips); they're independent, so now fetched in parallel via `Promise.all`.
+- Saving or deleting a record re-fetched the (unchanged) Definition every time via a full `openApp()` call; now only re-fetches the record list (`refreshRecords()`), cutting a redundant network round trip out of the most common action in the app.
+- The loading state now explains a likely cause after 4s (Render's free tier cold-start) instead of just sitting on a bare "載入中…".
+
 ## [0.7.0] - 2026-09-12
 
 ### Changed
