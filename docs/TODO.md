@@ -9,10 +9,11 @@
 - [ ] 實際部署一個公開 URL 並做 mobile smoke test。
 
 ## P1 — Definition v1 完整度
-- [ ] nested collection 視覺 editor（目前最低可用 JSON array）。
+- [x] nested collection 視覺 editor（recursive add/remove/edit；等待 CI 驗證）。
 - [ ] image/video/audio/location/barcode/signature 專用 UI。
-- [ ] canonical JSON Schema + semantic registry + units validation。
-- [ ] Mattress / Workout / Inspection templates 與 examples。
+- [ ] canonical JSON Schema + semantic registry + units validation（registry 已建立）。
+- [x] Mattress / Workout / Inspection templates。
+- [ ] templates 對應 examples。
 
 ## P2 — Production
 - [ ] k3s/Kubernetes target。
