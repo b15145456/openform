@@ -42,6 +42,8 @@ async function seedTemplate(file) {
 export async function migrate() {
   await pool.query(SCHEMA);
   await seedTemplate('mattress.yaml');
+  await seedTemplate('workout.yaml');
+  await seedTemplate('inspection.yaml');
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

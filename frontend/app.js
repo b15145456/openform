@@ -24,14 +24,13 @@ async function home() {
     root.innerHTML = `<p class="error">無法連線到伺服器：${esc(errorMessage(e))}</p>`;
     return;
   }
-  root.innerHTML = `<section class="hero"><h1>我的 App</h1><p>Definition-driven data collection。資料儲存在伺服器資料庫中。</p><div class="actions"><button id="mattress">使用床墊範本</button><button id="paste">匯入 Spec</button></div></section><section><h2>Apps</h2><div class="cards">${apps
+  root.innerHTML = `<section class="hero"><h1>我的 App</h1><p>Definition-driven data collection。資料儲存在伺服器資料庫中。</p><div class="actions"><button id="paste">匯入 Spec</button></div></section><section><h2>Apps</h2><div class="cards">${apps
     .map(
       (a) =>
         `<button class="card appcard" data-id="${esc(a.app.id)}"><b>${esc(a.app.name)}</b><span>${a.record_count} 筆紀錄</span></button>`
     )
     .join('')}</div></section>`;
-  $('#mattress').onclick = () => openApp('mattress_quote');
-  $('#paste').onclick = importSpec;
+  $('#paste').onclick = renderImportForm;
   document.querySelectorAll('.appcard').forEach((x) => (x.onclick = () => openApp(x.dataset.id)));
 }
 
@@ -189,25 +188,36 @@ function form(recordId = null) {
   renderForm(draftDef, draftOld);
 }
 
-async function importSpec() {
-  const raw = prompt('貼上 OpenForm Definition（YAML 或 JSON）');
-  if (!raw) return;
+function renderImportForm(draft = '') {
+  root.innerHTML = `<section><h1>匯入 Spec</h1><p class="muted">貼上 OpenForm Definition（YAML 或 JSON），驗證通過後會先預覽再建立 App。</p><textarea id="importText" spellcheck="false" style="min-height:320px;font-family:ui-monospace,monospace;font-size:13px">${esc(draft)}</textarea><div id="importResult"></div><div class="actions"><button id="importValidate">驗證</button><button type="button" id="importCancel" class="ghost">取消</button></div></section>`;
+  $('#importCancel').onclick = home;
+  $('#importValidate').onclick = () => previewImport($('#importText').value);
+}
+
+function previewImport(raw) {
+  const resultBox = $('#importResult');
   let d;
   try {
     d = yaml.load(raw);
   } catch (e) {
-    alert('無法解析：' + errorMessage(e));
+    resultBox.innerHTML = `<p class="error">無法解析：${esc(errorMessage(e))}</p>`;
     return;
   }
   const errs = validateDefinition(d);
-  if (errs.length) return alert('驗證失敗：\n' + errs.join('\n'));
-  if (!confirm(`建立 App：${d.app.name}？`)) return;
-  try {
-    await api.createApp(d);
-    await openApp(d.app.id);
-  } catch (e) {
-    alert('建立失敗：' + errorMessage(e));
+  if (errs.length) {
+    resultBox.innerHTML = `<div class="error"><b>驗證失敗</b><ul>${errs.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>`;
+    return;
   }
+  const fieldCount = d.fields.length;
+  resultBox.innerHTML = `<div class="success"><b>${esc(d.app.name)}</b>（id: ${esc(d.app.id)}, version: ${d.app.version}）— ${fieldCount} 個欄位</div><div class="actions"><button id="importConfirm">確認建立</button></div>`;
+  $('#importConfirm').onclick = async () => {
+    try {
+      await api.createApp(d);
+      await openApp(d.app.id);
+    } catch (e) {
+      resultBox.innerHTML = `<p class="error">建立失敗：${esc(errorMessage(e))}</p>`;
+    }
+  };
 }
 
 function download(name, text, type) {
