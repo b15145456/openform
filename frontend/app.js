@@ -469,12 +469,14 @@ function download(name, text, type) {
 
 function exportCsv(d, rs) {
   const ids = d.fields.map((f) => f.id);
-  const rows = [ids.map(csvEscape).join(','), ...rs.map((r) => ids.map((id) => csvEscape(r.data[id])).join(','))];
+  const labels = d.fields.map((f) => f.label);
+  const rows = [labels.map(csvEscape).join(','), ...rs.map((r) => ids.map((id) => csvEscape(r.data[id])).join(','))];
   download(`${d.app.id}.csv`, rows.join('\n'), 'text/csv;charset=utf-8');
 }
 
 let editorState = null;
 let editorIsNew = true;
+let editorOriginalVersion = null;
 
 function blankField() {
   return { id: '', label: '', type: 'text' };
@@ -492,6 +494,7 @@ function fieldAtPath(path) {
 
 function renderSpecEditor(existingDef) {
   editorIsNew = !existingDef;
+  editorOriginalVersion = existingDef ? existingDef.app.version : null;
   editorState = existingDef
     ? { ...JSON.parse(JSON.stringify(existingDef)), app: { ...JSON.parse(JSON.stringify(existingDef.app)), version: existingDef.app.version + 1 } }
     : { spec: 'openform/definition/v1', app: { id: '', name: '', version: 1 }, fields: [] };
@@ -511,28 +514,30 @@ function optionsEditorHtml(f) {
 function editorFieldHtml(f, path, index, count) {
   const p = [...path, index];
   const isCollection = f.type === 'collection';
-  return `<div class="editor-field" data-path="${p.join(',')}"><div class="editor-field-head"><div class="reorder-btns"><button type="button" class="ghost move-up" ${index === 0 ? 'disabled' : ''}>▲</button><button type="button" class="ghost move-down" ${index === count - 1 ? 'disabled' : ''}>▼</button></div><input class="ef-label" placeholder="標籤" value="${esc(f.label)}"><select class="ef-type">${FIELD_TYPES.map(
+  return `<div class="editor-field" data-path="${p.join(',')}"><div class="editor-field-head"><div class="reorder-btns"><button type="button" class="ghost move-up" ${index === 0 ? 'disabled' : ''}>▲</button><button type="button" class="ghost move-down" ${index === count - 1 ? 'disabled' : ''}>▼</button></div><input class="ef-label" placeholder="這個欄位叫什麼？" value="${esc(f.label)}"><select class="ef-type">${FIELD_TYPES.map(
     (t) => `<option value="${t}" ${f.type === t ? 'selected' : ''}>${t}</option>`
-  ).join('')}</select><button type="button" class="danger ef-remove">刪除</button></div><div class="editor-field-body"><label>id（snake_case）<input class="ef-id" placeholder="brand" value="${esc(f.id)}"></label><label>semantic_type（選填）<input class="ef-semantic" value="${esc(f.semantic_type || '')}"></label><label>unit（選填）<input class="ef-unit" value="${esc(f.unit || '')}"></label>${
+  ).join('')}</select><button type="button" class="danger ef-remove">刪除</button></div><div class="editor-field-body">${
     ['number', 'rating', 'duration'].includes(f.type)
       ? `<label>min<input class="ef-min" type="number" value="${f.min ?? ''}"></label><label>max<input class="ef-max" type="number" value="${f.max ?? ''}"></label>`
       : ''
   }${
-    f.type === 'text' ? `<label><input type="checkbox" class="ef-autocomplete" ${f.autocomplete ? 'checked' : ''}> 記住這個 App 過去輸入過的值（autocomplete）</label>` : ''
+    f.type === 'text' ? `<label><input type="checkbox" class="ef-autocomplete" ${f.autocomplete ? 'checked' : ''}> 記住這個 App 過去輸入過的值（下次可以直接選）</label>` : ''
   }${['select', 'multi_select'].includes(f.type) ? optionsEditorHtml(f) : ''}${
     isCollection
-      ? `<label>項目名稱（item_label）<input class="ef-itemlabel" value="${esc(f.item_label || '')}"></label><fieldset class="collection"><legend>子欄位</legend><div class="editor-fields">${(f.fields || [])
+      ? `<label>這一組的名稱（例如「動作」「組」）<input class="ef-itemlabel" value="${esc(f.item_label || '')}"></label><fieldset class="collection"><legend>子欄位</legend><div class="editor-fields">${(f.fields || [])
           .map((sf, si) => editorFieldHtml(sf, p, si, (f.fields || []).length))
           .join('')}</div><button type="button" class="secondary ef-add-subfield">＋ 新增子欄位</button></fieldset>`
       : ''
-  }</div></div>`;
+  }<details class="advanced"><summary>進階設定</summary><label>欄位 ID（機器用，留空會自動產生；建立後不要再改）<input class="ef-id" placeholder="自動產生" value="${esc(f.id)}"></label><label>semantic_type（選填，給其他系統/LLM 辨識資料意義用）<input class="ef-semantic" value="${esc(f.semantic_type || '')}"></label><label>unit（選填，度量單位）<input class="ef-unit" value="${esc(f.unit || '')}"></label></details></div></div>`;
 }
 
 function renderEditor() {
   const d = editorState;
-  root.innerHTML = `<section><h1>${editorIsNew ? '視覺化建立 App' : '編輯 Spec'}</h1><label>App 名稱<input id="edAppName" value="${esc(d.app.name)}"></label><label>App ID（snake_case，建立後不要再改）<input id="edAppId" value="${esc(
+  root.innerHTML = `<section><h1>${editorIsNew ? '視覺化建立 App' : '編輯 Spec'}</h1><label>App 名稱<input id="edAppName" placeholder="例如：讀書紀錄" value="${esc(d.app.name)}"></label><label>App ID（機器用的英文代號，建立後不要再改）<input id="edAppId" placeholder="自動產生" value="${esc(
     d.app.id
-  )}" ${editorIsNew ? '' : 'disabled'}></label><label>Version<input id="edAppVersion" type="number" min="1" value="${d.app.version}"></label><label>互動模式<select id="edInteractionMode"><option value="form" ${
+  )}" ${editorIsNew ? '' : 'disabled'}></label>${
+    editorIsNew ? '' : `<p class="muted">目前是第 ${editorOriginalVersion} 版，儲存後會變成第 ${d.app.version} 版；舊資料不受影響。</p>`
+  }<label>互動模式<select id="edInteractionMode"><option value="form" ${
     !d.app.interaction_mode || d.app.interaction_mode === 'form' ? 'selected' : ''
   }>表單（一次填完）</option><option value="conversation" ${d.app.interaction_mode === 'conversation' ? 'selected' : ''}>對話（一次一題）</option></select></label><h2>欄位</h2><div class="editor-fields">${d.fields
     .map((f, i) => editorFieldHtml(f, [], i, d.fields.length))
@@ -540,10 +545,20 @@ function renderEditor() {
   bindEditorEvents();
 }
 
+function sanitizeId(v) {
+  return String(v || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/^_+/, '');
+}
+
 function bindEditorEvents() {
   $('#edAppName').oninput = (e) => (editorState.app.name = e.target.value);
-  $('#edAppId').oninput = (e) => (editorState.app.id = e.target.value);
-  $('#edAppVersion').oninput = (e) => (editorState.app.version = Number(e.target.value) || 1);
+  $('#edAppId').oninput = (e) => {
+    const clean = sanitizeId(e.target.value);
+    if (clean !== e.target.value) e.target.value = clean;
+    editorState.app.id = clean;
+  };
   $('#edInteractionMode').onchange = (e) => (editorState.app.interaction_mode = e.target.value);
   $('#edAddField').onclick = () => {
     getFieldsRef([]).push(blankField());
@@ -579,7 +594,11 @@ function bindEditorEvents() {
     };
 
     const body = card.querySelector(':scope > .editor-field-body');
-    body.querySelector('.ef-id').oninput = (e) => (f.id = e.target.value);
+    body.querySelector('.ef-id').oninput = (e) => {
+      const clean = sanitizeId(e.target.value);
+      if (clean !== e.target.value) e.target.value = clean;
+      f.id = clean;
+    };
     body.querySelector('.ef-semantic').oninput = (e) => (f.semantic_type = e.target.value || undefined);
     body.querySelector('.ef-unit').oninput = (e) => (f.unit = e.target.value || undefined);
     const min = body.querySelector('.ef-min');
@@ -623,7 +642,26 @@ function bindEditorEvents() {
   });
 }
 
+function fillMissingIds(fields) {
+  const used = new Set(fields.map((f) => f.id).filter(Boolean));
+  let n = 1;
+  for (const f of fields) {
+    if (!f.id) {
+      let candidate = `field_${n}`;
+      while (used.has(candidate)) {
+        n++;
+        candidate = `field_${n}`;
+      }
+      f.id = candidate;
+      used.add(candidate);
+    }
+    if (f.type === 'collection' && Array.isArray(f.fields)) fillMissingIds(f.fields);
+  }
+}
+
 async function saveEditor() {
+  fillMissingIds(editorState.fields);
+  renderEditor();
   const errs = validateDefinition(editorState);
   const errBox = $('#editorErrors');
   if (errs.length) {

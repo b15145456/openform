@@ -1,5 +1,29 @@
 # OpenForm Handoff
 
+## 2026-09-12 — 深色模式降躁、編輯器隱藏技術欄位、完整度掃描
+### 做了什麼
+- 使用者回報「畫面不是很舒服」——實際截圖顯示是**深色模式**（`prefers-color-scheme: dark`）配色太亮太「霓虹」：accent 用 `#2dd4bf`（很亮的青綠）、hero 標題用 gradient-clip-text 從文字漸層到 accent-hover（`#5eead4`，比 accent 本身還亮），大面積搭配下視覺刺眼。修法：深色模式的 `--bg`/`--surface` 改用比較不這麼死黑的深灰、`--accent` 系列整體降飽和降亮度、`.hero h1` 在深色模式下直接關掉漸層文字效果改用純色、按鈕在深色模式拿掉發光陰影。
+- 使用者回報視覺化編輯器「有一些不需要讓使用者看到的東西」——確實：每個欄位卡片預設就攤開顯示 `id`（snake_case）、`semantic_type`、`unit` 這些只有要跟其他系統/LLM 對接才需要的技術細節，違反 `docs/openform-definition.md` 裡本來就寫的「一般使用者不要看到 Schema/Runtime/Semantic Registry」原則。修法：
+  1. 把 `id`/`semantic_type`/`unit` 收進一個預設收合的 `<details class="advanced"><summary>進階設定</summary>` 區塊（原生 HTML disclosure，不用額外寫展開/收合邏輯）。
+  2. 欄位 `id` 留空時，儲存前自動補上 `field_1`、`field_2`...（`fillMissingIds`，遞迴處理巢狀 collection），使用者完全不需要知道「snake_case」這個詞就能建立欄位。
+  3. App ID 跟欄位 ID 輸入框都改成即時清洗（小寫、非英數字元轉底線），使用者打什麼都會自動變成合法格式，不會因為打錯格式在儲存時才收到一串看不懂的驗證錯誤。
+  4. 拿掉可以讓使用者亂改的 Version 數字輸入框，改成一行說明文字「目前是第 X 版，儲存後會變成第 Y 版；舊資料不受影響」——version 本來就該是系統自動管理，不是使用者該手動填的東西。
+- 順手做了一輪「還有哪裡不完整」的全面掃描，抓到並修掉兩個真的問題：
+  1. **CSV 匯出用 `id`（如 `back_support`）當欄位標題**，不是人看得懂的 `label`（如「仰睡支撐」）——一般使用者拿去 Excel/Sheets 開會看不懂欄位是什麼。改成用 `label` 當標題列。
+  2. **`csvEscape` 對 collection 欄位的資料會產生垃圾字串** `"[object Object]|[object Object]"`——因為陣列一律先跑 `.join('|')`，沒有分辨陣列內容是不是物件。修成只有「純值陣列」（如 multi_select）才 join，物件陣列（collection 資料）改成 JSON.stringify，至少匯出的是可讀的結構化資料而不是垃圾字串。這個 bug 在 Workout 這種有 collection 的 App 匯出 CSV 時就會發生，先前沒人抓到。
+  3. 清掉一個死掉的 `<input id="importFile">`（原本的舊 code 遺留，app.js 從來沒有引用過）。
+
+### 實際驗證
+- 全部改動都跑過 `npm run build` + `npm test`（17 條 shared tests，新增了 CSV escape 對 collection 陣列的測試）以及 backend 對真實 Docker Postgres 的測試（5 條）。
+- 用 Playwright 實際開瀏覽器驗證：(1) 深色模式截圖前後對比，確認不再是「霓虹」感；(2) 編輯器的「進階設定」預設收合、欄位 id 留空存檔後真的自動變成 `field_1`、App ID 打 `"Hello World 123"` 即時清洗成 `hello_world_123`，全程 0 個 console error。
+
+### 現況
+這輪修改已經 commit/push，等 CI 綠燈後 Render 會自動部署。
+
+### 下一步
+1. 確認 Render 部署完成後，實際在深色模式手機瀏覽器看一次，確認觀感真的比較舒服。
+2. 之前列的待辦（`location`/`barcode`/`signature` 專用 UI、手勢拖曳排序）維持原狀，不受這輪影響。
+
 ## 2026-09-12 — Conversation 模式 + 視覺化 Spec 編輯器
 ### 做了什麼
 - **`app.interaction_mode`**（`form` 預設 / `conversation`）：新增到 `spec/definition.schema.json`（`app` 物件底下）與 `shared/runtime.js` 的 `validateDefinition`，純粹是呈現方式，完全不影響 Record 格式。

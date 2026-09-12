@@ -21,20 +21,35 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #121214;
-    --surface: #1b1b1e;
-    --border: #2c2c30;
-    --text: #f2f2f0;
-    --text-muted: #9a9a96;
-    --accent: #2dd4bf;
-    --accent-hover: #5eead4;
-    --accent-soft: #163b37;
-    --danger: #f2777a;
-    --danger-bg: #3a1f20;
-    --success: #6fcf97;
-    --success-bg: #16321f;
+    --bg: #17181a;
+    --surface: #1f2123;
+    --border: #33363a;
+    --text: #e8e8e6;
+    --text-muted: #96999c;
+    --accent: #3fb3a3;
+    --accent-hover: #55c2b3;
+    --accent-soft: #22322f;
+    --danger: #e0817f;
+    --danger-bg: #362221;
+    --success: #6fb98d;
+    --success-bg: #1f2e24;
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.35);
+  }
+
+  .hero h1 {
+    background: none;
+    -webkit-background-clip: initial;
+    background-clip: initial;
+    color: var(--text);
+  }
+
+  button {
+    box-shadow: none;
+  }
+
+  button:hover {
+    box-shadow: none;
   }
 }
 
@@ -510,6 +525,24 @@ input[type="checkbox"] {
 
 .options-editor .row input {
   flex: 1;
+}
+
+.advanced {
+  margin-top: 14px;
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+}
+
+.advanced summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+.advanced summary:hover {
+  color: var(--accent);
 }
 
 .conversation-step {

@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.1] - 2026-09-12
+
+### Fixed
+- Dark mode (`prefers-color-scheme: dark`) was too bright/neon — accent color toned down, backgrounds softened, the hero heading's gradient-text effect and buttons' glow shadow both disabled in dark mode.
+- The visual Definition editor exposed `id`/`semantic_type`/`unit` for every field unconditionally, contradicting this project's own "regular users shouldn't see Schema/Registry" principle. Moved behind a collapsed-by-default `<details>` "進階設定" section; field `id` now auto-fills (`field_1`, `field_2`, ...) if left blank, and both App ID and field ID inputs sanitize live instead of rejecting bad input only at save time. The Version number is no longer a raw editable input — it's auto-managed with an explanatory line.
+- CSV export used field `id`s (e.g. `back_support`) as column headers instead of human `label`s (e.g. 仰睡支撐).
+- `csvEscape` produced `"[object Object]|[object Object]"` for any `collection` field, since arrays always went through `.join('|')` regardless of content. Only plain-value arrays (e.g. `multi_select`) join now; arrays of objects (collection data) are JSON-stringified instead.
+- Removed a dead `<input id="importFile">` left over from before the import flow was rebuilt — never referenced by any code.
+
 ## [0.5.0] - 2026-09-12
 
 ### Added
