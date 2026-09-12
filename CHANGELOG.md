@@ -1,33 +1,21 @@
 # Changelog
 
-All meaningful OpenForm iterations and deployments should be recorded here.
-
-## [0.1.0-alpha.1] - 2026-09-12
+## [0.2.0-alpha.3] - 2026-09-12
 
 ### Added
+- Industry-standard GitOps delivery path: GitHub Actions → Docker → GHCR → Argo CD → Kubernetes/k3s → Traefik.
+- Multi-stage production container with nginx and health endpoint.
+- Kubernetes Deployment, Service, Ingress, probes and resource limits.
+- Argo CD Application with automated prune/self-heal.
+- CI publishes immutable commit-SHA image and `latest` only after tests/build succeed.
 
-- Established GitHub as the canonical source of truth for OpenForm.
-- Added initial product specification.
-- Added initial architecture specification separating authoring and runtime planes.
-- Added initial OpenForm Definition contract.
-- Added initial OpenForm Record Language exchange contract.
-- Added ADR-0001 for source-of-truth governance.
-- Added ADR-0002 defining LLM-assisted authoring as separate from deterministic runtime.
-- Added chronological project log.
+### Deployment status
+- GitOps manifests are ready for cluster bootstrap.
+- Production host remains intentionally `openform.example.com` until the real DNS name is supplied.
+- Actual Argo CD sync requires access to the target Kubernetes/Argo CD environment.
 
-### Architecture
+## [0.2.0-alpha.2] - 2026-09-12
+- Runtime Definition validation, dynamic controls, tests and mobile Mattress workflow.
 
-- LLM calls are explicit authoring operations, not automatic runtime behavior.
-- OpenForm Definitions are versioned artifacts consumed by deterministic runtime components.
-- OpenForm Records are separate from definitions and carry stable semantic type and definition identity.
-
-### Release process
-
-From this iteration onward, deployable changes must update release notes. Release notes should describe user-visible changes, contract/schema changes, migrations or compatibility impact, and deployment-relevant changes.
-
-### Known gaps
-
-- JSON Schemas are not yet formalized.
-- Identifier/namespace conventions are not finalized.
-- Compatibility policy is not finalized.
-- Runtime/API implementation and automated deployment pipeline are not yet defined in the repository.
+## [0.1.0-alpha.1] - 2026-09-12
+- Initial OpenForm specifications and GitHub source-of-truth governance.

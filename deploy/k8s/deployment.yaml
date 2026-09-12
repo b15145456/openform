@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openform
+  namespace: openform
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: openform }
+  template:
+    metadata:
+      labels: { app: openform }
+    spec:
+      containers:
+        - name: openform
+          image: ghcr.io/b15145456/openform:latest
+          imagePullPolicy: Always
+          ports:
+            - { name: http, containerPort: 8080 }
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }
+            limits: { cpu: 250m, memory: 128Mi }
