@@ -1,0 +1,18 @@
+spec: openform/definition/v1
+app:
+  id: inspection
+  name: 現場檢查紀錄
+  version: 1
+fields:
+  - { id: inspected_at, label: 檢查時間, type: datetime }
+  - { id: location, label: 地點, type: location, semantic_type: location.position }
+  - id: status
+    label: 狀態
+    type: select
+    semantic_type: inspection.status
+    options:
+      - { value: pass, label: 通過 }
+      - { value: attention, label: 需注意 }
+      - { value: fail, label: 不通過 }
+  - { id: issue_description, label: 問題說明, type: textarea, semantic_type: inspection.issue.description }
+  - { id: photo, label: 現場照片, type: image, semantic_type: media.image }

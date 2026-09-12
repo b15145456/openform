@@ -1,0 +1,20 @@
+spec: openform/definition/v1
+app:
+  id: workout
+  name: 健身紀錄
+  version: 1
+fields:
+  - { id: workout_date, label: 日期, type: date }
+  - { id: body_weight, label: 體重, type: number, semantic_type: fitness.body.weight, unit: kg }
+  - id: exercises
+    label: 動作
+    type: collection
+    fields:
+      - { id: name, label: 動作名稱, type: text, semantic_type: fitness.exercise.name }
+      - id: sets
+        label: 組數
+        type: collection
+        fields:
+          - { id: load, label: 重量, type: number, semantic_type: fitness.exercise.load, unit: kg }
+          - { id: reps, label: 次數, type: number, semantic_type: fitness.exercise.reps }
+          - { id: rpe, label: RPE, type: rating, min: 1, max: 10, semantic_type: fitness.exercise.rpe }

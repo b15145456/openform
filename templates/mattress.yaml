@@ -1,0 +1,28 @@
+spec: openform/definition/v1
+app:
+  id: mattress_quote
+  name: 床墊試躺 / 詢價紀錄
+  version: 1
+fields:
+  - { id: store, label: 店家, type: text }
+  - { id: brand, label: 品牌, type: text }
+  - { id: model, label: 型號, type: text }
+  - { id: size, label: 尺寸, type: text }
+  - { id: price, label: 報價, type: number, semantic_type: commerce.price, unit: TWD }
+  - { id: all_in_price, label: 總價, type: number, semantic_type: commerce.price, unit: TWD }
+  - { id: materials, label: 材質, type: textarea }
+  - { id: spring, label: 彈簧, type: text }
+  - { id: zones, label: 分區, type: text }
+  - { id: edge_support, label: 邊緣支撐, type: rating, min: 1, max: 5 }
+  - { id: firmness, label: 軟硬度, type: rating, min: 1, max: 10 }
+  - { id: back_support, label: 仰睡支撐, type: rating, min: 1, max: 5 }
+  - { id: side_comfort, label: 側睡舒適, type: rating, min: 1, max: 5 }
+  - { id: motion_isolation, label: 抗干擾, type: rating, min: 1, max: 5 }
+  - { id: breathability, label: 透氣, type: rating, min: 1, max: 5 }
+  - { id: overall_comfort, label: 整體舒適, type: rating, min: 1, max: 5 }
+  - { id: trial, label: 試睡, type: text }
+  - { id: returns, label: 退換貨, type: text }
+  - { id: warranty, label: 保固, type: text }
+  - { id: indentation, label: 凹陷保固條件, type: text }
+  - { id: delivery, label: 配送, type: text }
+  - { id: notes, label: 備註, type: textarea }
