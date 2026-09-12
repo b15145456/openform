@@ -33,8 +33,8 @@ async function seedTemplate(file) {
   const errs = validateDefinition(def);
   if (errs.length) throw new Error(`${file} invalid: ${errs.join('; ')}`);
   await pool.query(
-    `INSERT INTO apps (id, spec) VALUES ($1, $2)
-     ON CONFLICT (id) DO NOTHING`,
+    `INSERT INTO apps (id, spec, updated_at) VALUES ($1, $2, now())
+     ON CONFLICT (id) DO UPDATE SET spec = EXCLUDED.spec, updated_at = now()`,
     [def.app.id, def]
   );
 }

@@ -2,12 +2,13 @@ spec: openform/definition/v1
 app:
   id: mattress_quote
   name: 床墊試躺 / 詢價紀錄
-  version: 1
+  version: 2
 fields:
   - { id: store, label: 店家, type: text }
   - { id: brand, label: 品牌, type: text }
   - { id: model, label: 型號, type: text }
   - { id: size, label: 尺寸, type: text }
+  - { id: photo, label: 照片, type: image, semantic_type: media.image }
   - { id: price, label: 報價, type: number, semantic_type: commerce.price, unit: TWD }
   - { id: all_in_price, label: 總價, type: number, semantic_type: commerce.price, unit: TWD }
   - { id: materials, label: 材質, type: textarea }

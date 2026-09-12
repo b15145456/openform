@@ -46,6 +46,13 @@ test('record CRUD lifecycle', async () => {
   assert.equal(del.status, 204);
 });
 
+test('POST /api/uploads rejects a disallowed content type', async () => {
+  const res = await request(app)
+    .post('/api/uploads')
+    .send({ filename: 'evil.exe', contentType: 'application/x-msdownload' });
+  assert.equal(res.status, 400);
+});
+
 test('POST /api/apps rejects invalid definition', async () => {
   const res = await request(app)
     .post('/api/apps')

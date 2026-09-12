@@ -94,7 +94,7 @@ Rules:
           max: 10
           semantic_type: fitness.exercise.rpe
 ```
-- `image` / `video` / `audio` / `location` / `barcode` / `signature` are declared and validated today; the Runtime currently renders them as a plain text input as a fallback (dedicated capture/upload UI is on the roadmap — see `docs/TODO.md`). A Definition author does not need to wait for that UI to declare these types; the field still validates and stores whatever the current UI writes to it.
+- `image` / `video` / `audio` render a real file picker that uploads to object storage (Neon Object Storage in the reference deployment) and stores the resulting **public URL as a plain string** in the Record's `data` — same as any other single-value field, no special Record shape. The Runtime never stores raw bytes in Postgres. `location` / `barcode` / `signature` don't have dedicated capture UI yet and currently fall back to a plain text input (see `docs/TODO.md`); a Definition author doesn't need to wait for that UI to declare these types, since the field still validates today.
 
 **Never** put executable code (JavaScript, shell, SQL, arbitrary expressions) in a Definition. There is no field type or property that the Runtime evaluates as code — it is a pure data description, by design.
 

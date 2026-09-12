@@ -8,16 +8,18 @@
 - [x] 取得 CI green 的實際證據（GitHub Actions run #11, commit c3861f5）。
 - [x] 前後端分離（`frontend/` + `backend/`）+ 接 Postgres 資料庫，取代 localStorage（本地以 Docker Postgres 驗證過 CRUD/CI 流程）。
 - [x] 實際建立 Neon Postgres 專案並連上（`neon link` 到 project `aged-moon-84749721` / branch `production`；`neon deploy` 套用 `neon.ts` policy；本機以真實 `DATABASE_URL` 跑過 migration + API smoke test，見 HANDOFF）。
-- [ ] Render 帳號申請、實際部署到公開 URL 並做 mobile smoke test（見 `docs/deployment.md` Path A；Render 那一步還沒做，需要使用者自己的 Render 帳號）。
-- [ ] 確認 GitHub Actions 上這次新增的 Postgres service container 測試真的能跑綠（本地驗證過，但還沒有實際 push 觸發過 CI）。
+- [x] Render 帳號申請、實際部署到公開 URL 並做 mobile smoke test（https://openform-frontend.onrender.com + https://openform-backend.onrender.com，已用手機/curl 驗證可用）。
+- [x] 確認 GitHub Actions 上新增的 Postgres service container 測試真的能跑綠（多次 push 後 CI 皆為 success）。
 
 ## P1 — Definition v1 完整度
 - [x] nested collection 視覺 editor（CI #14 已通過）。
-- [ ] image/video/audio/location/barcode/signature 專用 UI。
+- [x] image/video/audio 上傳 UI（接 Neon Object Storage，presigned upload，見 HANDOFF）。
+- [ ] location/barcode/signature 專用 UI（目前仍 fallback 成純文字輸入）。
 - [x] canonical Definition/Record JSON Schema。
 - [x] semantic registry + canonical unit runtime validation（等待此 commit CI 驗證）。
-- [x] Mattress / Workout / Inspection templates。
+- [x] Mattress / Workout / Inspection templates（mattress/workout 因新增 photo/form_video 欄位升到 version 2）。
 - [ ] templates 對應 examples。
+- [x] App 畫面可以查看/複製/下載自己的 Definition Spec（YAML），方便貼給外部 LLM 當範例。
 
 ## P2 — Production
 - [ ] k3s/Kubernetes target。

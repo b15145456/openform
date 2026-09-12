@@ -1,5 +1,13 @@
 # OpenForm Progress
 
+## 2026-09-12 — Live on Render, media uploads, LLM-ready spec docs
+- OpenForm is live and usable: `openform-frontend`/`openform-backend` on Render, Neon Postgres for data, Neon Object Storage for media — all verified with real traffic, not just local tests.
+- Fixed three real bugs a mobile smoke test caught (invisible card text, prompt()-based import, missing Workout/Inspection seeding).
+- `docs/openform-definition.md` and `docs/record-language.md` now match the actually-enforced schema (they previously described a different, never-built format) and include a ready-to-paste prompt for generating a Definition with an external LLM for any use case.
+- Added a "查看 Spec" view so any app's Definition YAML can be copied/downloaded directly from the UI — closing the loop on "LLM reads a spec, produces a Definition, pastes it in."
+- `image`/`video`/`audio` fields now upload for real via presigned URLs to Neon Object Storage; Mattress (photo) and Workout (exercise form video) templates updated to use them, bumping both to `app.version: 2` with existing records confirmed unaffected.
+- Two rounds of visual design work: color system, hover/focus states, dark mode, per-app icons, empty states, header branding.
+
 ## 2026-09-12 — Real Neon Postgres provisioned
 - Linked this repo to an actual Neon project (`aged-moon-84749721`, branch `production`) via the Neon CLI, replacing the "will need Neon/Render accounts" placeholder from earlier the same day.
 - Ran the real migration against it (tables created, mattress template seeded) and booted the backend against it, confirmed via `/healthz` and `/api/apps`.

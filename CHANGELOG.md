@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0] - 2026-09-12
+
+### Added
+- `image`/`video`/`audio` fields now upload for real: presigned-URL uploads direct to Neon Object Storage (`backend/src/storage.js`, `POST /api/uploads`), stored as a plain public URL string in Record `data` — no special-casing in the Record shape. Mattress template gained a `photo` field, Workout gained `form_video` per exercise; both bumped to `app.version: 2`.
+- A "查看 Spec" view on every app screen: dumps its Definition as YAML with copy/download, so a user can hand their own app's spec to an external LLM as a concrete example when asking it to generate a Definition for a different use case.
+
+### Fixed
+- `docs/openform-definition.md` / `docs/record-language.md` described a schema that was never implemented (leftover early draft); rewritten to match `openform/definition/v1` / `openform/record/v1` exactly, with a ready-to-paste LLM prompt for generating a Definition for any domain.
+- Migration seeding changed from insert-only to upsert, so first-party template updates (like the new photo/video fields) reach already-deployed instances — verified this does not disturb existing records.
+
+### Deployed
+- First public deployment: `openform-frontend`/`openform-backend` on Render (free tier), Neon Postgres + Neon Object Storage for data/media. Verified live via curl and a real mobile smoke test, which caught and led to fixing three UI bugs (invisible card text on `button.card`, a native-`prompt()` import flow replaced with an in-page editor, and Workout/Inspection templates that existed as files but were never seeded).
+
 ## [0.3.1] - 2026-09-12
 
 ### Fixed

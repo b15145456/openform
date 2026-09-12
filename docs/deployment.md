@@ -20,7 +20,7 @@ A real Neon project is already provisioned and linked to this repo:
    - `openform-backend` — Node web service running `npm start` (runs DB migration/seed automatically on boot, then serves the API).
    - `openform-frontend` — static site built with `npm run build`, published from `frontend/dist`.
 3. In the Render dashboard, set environment variables (these are marked `sync: false` in `render.yaml`, so Render won't auto-fill them):
-   - On `openform-backend`: `DATABASE_URL` (from `.env.local` above, or `neon connection-string production --project-id aged-moon-84749721`), `FRONTEND_ORIGIN` (the `openform-frontend` public URL, e.g. `https://openform-frontend.onrender.com`) — restricts CORS to that origin.
+   - On `openform-backend`: `DATABASE_URL` (from `.env.local` above, or `neon connection-string production --project-id aged-moon-84749721`), `FRONTEND_ORIGIN` (the `openform-frontend` public URL, e.g. `https://openform-frontend.onrender.com`) — restricts CORS to that origin — plus `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL_S3`, `AWS_REGION` (all four from `.env.local`, pulled by `neon deploy`/`neon env pull` after `neon.ts` declared the `media` bucket) so `image`/`video`/`audio` field uploads work.
    - On `openform-frontend`: `VITE_API_URL` (the `openform-backend` public URL) — baked into the static build at build time, so redeploy the frontend after changing it.
 
 ### Notes

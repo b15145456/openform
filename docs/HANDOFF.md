@@ -1,5 +1,42 @@
 # OpenForm Handoff
 
+## 2026-09-12 — Render 上線、UI 修復、Media 上傳、Spec 可視化
+### 做了什麼
+- **Render 部署完成**：`openform-backend`（Node web service）與 `openform-frontend`（static site）都已建立並上線，`render.yaml` 曾因 static site 不接受 `plan: free` 欄位而失敗一次，移除該欄位後成功。環境變數（`DATABASE_URL`、`FRONTEND_ORIGIN`、`VITE_API_URL`）都已回填，CORS 驗證正常。
+- 合併了同一天稍早、由另一個 session/使用者在 `main` 上獨立完成的「canonical schema + semantic validation」工作（`spec/*.schema.json`、runtime 的 semantic_type/unit 檢查），用 `git merge` 手動解衝突（HANDOFF/PROGRESS/tests 有衝突，`shared/runtime.js` 靠 git rename 偵測自動合併成功）。
+- **真人手機測試抓到 3 個 UI bug**，全部修好：
+  1. `.card` 沒設 `color`，導致 `<button class="card appcard">` 白底白字看不到內容。
+  2. 「匯入 Spec」只是瀏覽器原生 `prompt()` 單行輸入，換成頁面內 textarea + 驗證 + 預覽（app 名稱/版本/欄位數）流程。
+  3. Workout / Inspection 範本檔案存在但後端從沒 seed 過；現在三個範本開機都會 seed。
+- **文件正確性修復**：`docs/openform-definition.md`、`docs/record-language.md` 原本描述一套從未實作過的舊格式（`openform:"0.1"`、`key`、`recordType`），跟實際 `openform/definition/v1`／`openform/record/v1` 完全對不上——如果照舊文件餵給 LLM，產生的 spec 會被 validateDefinition 全部拒絕。已重寫成與實際 schema 一致，並加入可直接複製給 GPT/Claude 的 prompt 模板。
+- **Image/Video/Audio 上傳**（接 Neon Object Storage）：
+  - `neon.ts` 宣告 `preview.buckets.media`（`public_read`），`neon deploy` 建立 bucket，憑證自動拉進 `.env.local`。
+  - Backend 新增 `POST /api/uploads`（`backend/src/storage.js` + `routes/uploads.js`）：驗證 `contentType` 是 image/video/audio、用 `@aws-sdk/client-s3` + `s3-request-presigner` 產生 300 秒有效的 presigned PUT URL，回傳 `{key, uploadUrl, publicUrl}`。
+  - Frontend：`image`/`video`/`audio` 欄位現在渲染真的檔案選擇器，選檔後直接 `XMLHttpRequest PUT` 到 presigned URL（不經過我們的 backend 轉送），成功後把 `publicUrl`（純字串）存進 Record `data`，跟其他欄位型別一樣，沒有特殊 Record 格式。上傳中顯示進度%，完成後即時預覽（img/video/audio 元素）。
+  - Record `data` 只存 URL 字串，檔案本體從不進 Postgres。
+  - 床墊範本加了 `photo`（image）欄位、健身範本加了 `form_video`（video，`fitness.exercise.form_video` 這個原本就註冊但沒人用的 semantic type 終於用上了）；兩個範本因此升到 `app.version: 2`。`backend/src/migrate.js` 的 seed 邏輯從「ON CONFLICT DO NOTHING」改成「DO UPDATE」（upsert），這樣範本檔案更新後既有部署會自動同步——已驗證：既有 Record 資料在 re-seed 後完全不受影響（見下方驗證）。
+- **Spec 可視化**：App 畫面新增「查看 Spec」按鈕，用 `js-yaml` 把目前的 Definition dump 成 YAML 顯示、可一鍵複製或下載——目的是讓使用者能把自己 App 的 spec 直接複製貼給任何 LLM 當作範例/語法參考，去生成新的、完全不同用途的表單。這是本專案「LLM 讀規範產生 spec」核心賣點的重要缺口，之前完全沒有入口能看到 spec 本身。
+- **視覺設計**：兩輪美化——CSS variables 色彩系統、hover/focus 動畫、深色模式（第一輪）；App 卡片加 emoji icon、空狀態（empty state）樣式、header 加 logo 徽章（第二輪）。
+
+### 實際驗證（不是只憑肉眼看程式碼）
+- 全部改動都跑過本地 Docker Postgres 的完整測試（10 shared + 5 backend，backend 新增了一個 upload 驗證測試，且刻意在**沒有** AWS 憑證的情況下跑過，確認 CI 不需要雲端密鑰也能跑這個測試）。
+- Object Storage 是真實走過一次完整流程驗證的：向 backend 要 presigned URL → 實際 PUT 一張真的 PNG 到 Neon Object Storage → 用 public_read URL 讀回來 → `cmp` 位元組完全相同 → 用 `neon bucket object delete` 清掉測試檔案，bucket 現在是空的。
+- 用真實 `DATABASE_URL` 模擬過「重新部署」情境：建一筆 record → 重跑 migrate（升版 mattress_quote 到 v2）→ 確認舊 record 資料原封不動、新版 app 已經有 `photo` 欄位。
+- Render 上的 backend/frontend 都用 curl 實際打過（`/healthz`、`/api/apps`、CORS header、建立/刪除一筆 workout record），frontend 打包後的 JS/CSS 也抓下來確認新版內容（`importResult`、`--accent` CSS variable）已經上線。
+- CI 每次 push 後都用 `gh run watch` 等到 success 才继续，不是假設它會過。
+
+### 現況
+Mattress/Workout/Inspection 三個 App 已經在正式環境（Render + Neon）可用，含照片/影片上傳。文件（Definition/Record contract）跟實際程式碼一致了，也有現成的「複製 Spec 去問 LLM」入口。
+
+### 下一步
+1. `location`/`barcode`/`signature` 仍是純文字 fallback，沒有專用 UI。
+2. `templates/` 對應的 `examples/`（worked Record 範例）還沒建立。
+3. 視需要加 Authentication（目前仍是單一共享工作區）。
+4. GitHub Actions 目前沒有把 AWS_* 憑證當 secret 加進去，所以 CI 沒有對 Object Storage 做真正的上傳整合測試（只測了 contentType 驗證邏輯）；如果要在 CI 也驗證真實上傳，需要 `gh secret set` 把 Neon Object Storage 憑證加進 repo secrets。
+
+### 卡關
+無新增卡關；Render/Neon 帳號、部署都已由使用者本人完成必要的瀏覽器授權步驟。
+
 ## 2026-09-12 — Neon Postgres 專案實際連上
 ### 做了什麼
 - 全域安裝官方 Neon CLI（npm 套件 `neon`，`neonctl` 現在只是相容別名，兩者同一個 repo）。

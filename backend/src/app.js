@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { appsRouter } from './routes/apps.js';
 import { recordsRouter } from './routes/records.js';
+import { uploadsRouter } from './routes/uploads.js';
 
 export function createApp() {
   const app = express();
@@ -13,6 +14,7 @@ export function createApp() {
   app.get('/healthz', (req, res) => res.type('text').send('ok'));
   app.use('/api/apps', appsRouter);
   app.use('/api/apps/:appId/records', recordsRouter);
+  app.use('/api/uploads', uploadsRouter);
 
   app.use((err, req, res, next) => {
     console.error(err);

@@ -2,7 +2,7 @@ spec: openform/definition/v1
 app:
   id: workout
   name: 健身紀錄
-  version: 1
+  version: 2
 fields:
   - { id: workout_date, label: 日期, type: date }
   - { id: body_weight, label: 體重, type: number, semantic_type: fitness.body.weight, unit: kg }
@@ -11,6 +11,7 @@ fields:
     type: collection
     fields:
       - { id: name, label: 動作名稱, type: text, semantic_type: fitness.exercise.name }
+      - { id: form_video, label: 動作影片, type: video, semantic_type: fitness.exercise.form_video }
       - id: sets
         label: 組數
         type: collection
