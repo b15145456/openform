@@ -57,7 +57,13 @@ services:
     plan: free
     image:
       url: docker.io/openfga/openfga:latest
-    dockerCommand: run
+    # Must be the absolute path, not just "run": Render replaces the image's
+    # own ENTRYPOINT with this command rather than appending it as CMD args,
+    # and the image has no shell/PATH lookup — "run" alone fails instantly
+    # with "exec: run: executable file not found in $PATH" and no other
+    # output (confirmed locally: `docker run --entrypoint run openfga/openfga`
+    # reproduces the exact silent "exited with status 128" seen on Render).
+    dockerCommand: /openfga run
     healthCheckPath: /healthz
     envVars:
       - key: OPENFGA_DATASTORE_ENGINE
