@@ -60,7 +60,15 @@ export function ensureFga() {
     }
     c.authorizationModelId = modelId;
     return c;
-  })();
+  })().catch((e) => {
+    // Don't cache a failed attempt forever — OpenFGA might just be
+    // temporarily unreachable (e.g. still cold-starting on its own
+    // schedule). Clearing this lets the next call retry from scratch
+    // instead of every FGA operation failing for the rest of this
+    // process's lifetime.
+    ready = null;
+    throw e;
+  });
   return ready;
 }
 
