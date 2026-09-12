@@ -1,5 +1,5 @@
 import yaml from 'js-yaml';
-import { validateDefinition, csvEscape } from '../shared/runtime.js';
+import { validateDefinition, csvEscape, FIELD_TYPES } from '../shared/runtime.js';
 import { api, uploadFile } from './api.js';
 
 const $ = (s) => document.querySelector(s);
@@ -26,7 +26,7 @@ async function home() {
     root.innerHTML = `<p class="error">無法連線到伺服器：${esc(errorMessage(e))}</p>`;
     return;
   }
-  root.innerHTML = `<section class="hero"><h1>我的 App</h1><p>Definition-driven data collection。資料儲存在伺服器資料庫中。</p><div class="actions"><button id="paste">匯入 Spec</button></div></section><section><h2>Apps</h2>${
+  root.innerHTML = `<section class="hero"><h1>我的 App</h1><p>Definition-driven data collection。資料儲存在伺服器資料庫中。</p><div class="actions"><button id="paste">匯入 Spec</button><button id="build" class="secondary">視覺化建立</button></div></section><section><h2>Apps</h2>${
     apps.length
       ? `<div class="cards">${apps
           .map(
@@ -37,6 +37,7 @@ async function home() {
       : '<p class="empty-state">還沒有任何 App，使用上面的「匯入 Spec」開始。</p>'
   }</section>`;
   $('#paste').onclick = renderImportForm;
+  $('#build').onclick = () => renderSpecEditor(null);
   document.querySelectorAll('.appcard').forEach((x) => (x.onclick = () => openApp(x.dataset.id)));
 }
 
@@ -56,7 +57,7 @@ async function openApp(id) {
 function renderApp() {
   const d = currentDef;
   const rs = currentRecords;
-  root.innerHTML = `<section><h1>${esc(d.app.name)}</h1><div class="actions"><button id="new">新增紀錄</button><button id="spec" class="secondary">查看 Spec</button><button id="json">匯出 JSON</button><button id="csv">匯出 CSV</button><button id="back" class="ghost">返回</button></div></section><section><h2>紀錄</h2>${
+  root.innerHTML = `<section><h1>${esc(d.app.name)}</h1><div class="actions"><button id="new">新增紀錄</button><button id="spec" class="secondary">查看 Spec</button><button id="editSpec" class="secondary">編輯 Spec</button><button id="json">匯出 JSON</button><button id="csv">匯出 CSV</button><button id="back" class="ghost">返回</button></div></section><section><h2>紀錄</h2>${
     rs.length
       ? `<div class="cards">${rs
           .map(
@@ -68,6 +69,7 @@ function renderApp() {
   }</section>`;
   $('#new').onclick = () => form();
   $('#spec').onclick = renderSpecView;
+  $('#editSpec').onclick = () => renderSpecEditor(d);
   $('#json').onclick = () => download(`${current}.json`, JSON.stringify(rs, null, 2), 'application/json');
   $('#csv').onclick = () => exportCsv(d, rs);
   $('#back').onclick = home;
@@ -341,7 +343,88 @@ function renderForm(d, old, values = old?.data || {}) {
 function form(recordId = null) {
   draftDef = currentDef;
   draftOld = recordId === null ? null : currentRecords.find((r) => r.id === recordId);
-  renderForm(draftDef, draftOld);
+  if (draftDef.app.interaction_mode === 'conversation') {
+    startConversation(draftDef, draftOld);
+  } else {
+    renderForm(draftDef, draftOld);
+  }
+}
+
+async function startConversation(d, old) {
+  const data = old ? JSON.parse(JSON.stringify(old.data)) : {};
+  await runFieldSequence(d.fields, data);
+  renderConversationReview(d, old, data);
+}
+
+function askField(f, currentValue, progressText) {
+  return new Promise((resolve) => {
+    root.innerHTML = `<section class="conversation-step"><p class="convo-progress">${esc(progressText)}</p><h1>${esc(f.label)}</h1><form id="convoForm">${fieldHtml(
+      f,
+      currentValue,
+      [f.id]
+    )}<div class="actions"><button type="button" id="convoBack" class="ghost">上一步</button><button type="submit" id="convoNext">下一步</button></div></form></section>`;
+    bindMediaInputs();
+    bindRatingInputs();
+    bindNumberValidation();
+    const submit = (action) => resolve({ action, value: readField(f, [f.id]) });
+    $('#convoForm').onsubmit = (e) => {
+      e.preventDefault();
+      submit('next');
+    };
+    $('#convoBack').onclick = () => submit('back');
+  });
+}
+
+function askAddItem(f, count) {
+  return new Promise((resolve) => {
+    root.innerHTML = `<section class="conversation-step"><p class="convo-progress">${esc(f.label)}（目前 ${count} 筆）</p><h1>要新增一筆「${esc(
+      f.item_label || '項目'
+    )}」嗎？</h1><div class="actions"><button id="convoAddYes">新增</button><button id="convoAddNo" class="secondary">${count > 0 ? '不用了，繼續下一步' : '略過'}</button></div></section>`;
+    $('#convoAddYes').onclick = () => resolve(true);
+    $('#convoAddNo').onclick = () => resolve(false);
+  });
+}
+
+async function runFieldSequence(fields, dataObj) {
+  const total = fields.length;
+  let i = 0;
+  while (i < fields.length) {
+    const f = fields[i];
+    if (f.type === 'collection') {
+      dataObj[f.id] = Array.isArray(dataObj[f.id]) ? dataObj[f.id] : [];
+      while (await askAddItem(f, dataObj[f.id].length)) {
+        const item = {};
+        await runFieldSequence(f.fields || [], item);
+        dataObj[f.id].push(item);
+      }
+      i++;
+    } else {
+      const { action, value } = await askField(f, dataObj[f.id], `第 ${i + 1} / ${total} 題`);
+      dataObj[f.id] = value;
+      if (action === 'back' && i > 0) i--;
+      else i++;
+    }
+  }
+}
+
+function renderConversationReview(d, old, data) {
+  root.innerHTML = `<section><h1>確認紀錄</h1><p class="muted">檢查一下，沒問題再按「完成對話」儲存。</p><div class="view-fields">${d.fields
+    .map((f) => viewFieldHtml(f, data[f.id]))
+    .join('')}</div><div class="actions"><button id="convoFinish">完成對話</button><button type="button" id="convoEditForm" class="secondary">改用表單微調</button><button type="button" id="convoCancel" class="ghost">取消</button></div></section>`;
+  $('#convoFinish').onclick = async () => {
+    try {
+      if (old) {
+        await api.updateRecord(current, old.id, data);
+      } else {
+        await api.createRecord(current, data);
+      }
+      await openApp(current);
+    } catch (e) {
+      alert('儲存失敗：' + errorMessage(e));
+    }
+  };
+  $('#convoEditForm').onclick = () => renderForm(d, old, data);
+  $('#convoCancel').onclick = () => renderApp();
 }
 
 function renderImportForm(draft = '') {
@@ -388,6 +471,171 @@ function exportCsv(d, rs) {
   const ids = d.fields.map((f) => f.id);
   const rows = [ids.map(csvEscape).join(','), ...rs.map((r) => ids.map((id) => csvEscape(r.data[id])).join(','))];
   download(`${d.app.id}.csv`, rows.join('\n'), 'text/csv;charset=utf-8');
+}
+
+let editorState = null;
+let editorIsNew = true;
+
+function blankField() {
+  return { id: '', label: '', type: 'text' };
+}
+
+function getFieldsRef(path) {
+  let fields = editorState.fields;
+  for (const idx of path) fields = fields[idx].fields;
+  return fields;
+}
+
+function fieldAtPath(path) {
+  return getFieldsRef(path.slice(0, -1))[path[path.length - 1]];
+}
+
+function renderSpecEditor(existingDef) {
+  editorIsNew = !existingDef;
+  editorState = existingDef
+    ? { ...JSON.parse(JSON.stringify(existingDef)), app: { ...JSON.parse(JSON.stringify(existingDef.app)), version: existingDef.app.version + 1 } }
+    : { spec: 'openform/definition/v1', app: { id: '', name: '', version: 1 }, fields: [] };
+  renderEditor();
+}
+
+function optionsEditorHtml(f) {
+  const opts = f.options || [];
+  return `<div class="options-editor"><label>選項（value / label）</label>${opts
+    .map(
+      (o, oi) =>
+        `<div class="row"><input class="ef-opt-value" data-oi="${oi}" placeholder="value" value="${esc(o.value)}"><input class="ef-opt-label" data-oi="${oi}" placeholder="label" value="${esc(o.label)}"><button type="button" class="danger ef-opt-remove" data-oi="${oi}">✕</button></div>`
+    )
+    .join('')}<button type="button" class="secondary ef-opt-add">＋ 新增選項</button></div>`;
+}
+
+function editorFieldHtml(f, path, index, count) {
+  const p = [...path, index];
+  const isCollection = f.type === 'collection';
+  return `<div class="editor-field" data-path="${p.join(',')}"><div class="editor-field-head"><div class="reorder-btns"><button type="button" class="ghost move-up" ${index === 0 ? 'disabled' : ''}>▲</button><button type="button" class="ghost move-down" ${index === count - 1 ? 'disabled' : ''}>▼</button></div><input class="ef-label" placeholder="標籤" value="${esc(f.label)}"><select class="ef-type">${FIELD_TYPES.map(
+    (t) => `<option value="${t}" ${f.type === t ? 'selected' : ''}>${t}</option>`
+  ).join('')}</select><button type="button" class="danger ef-remove">刪除</button></div><div class="editor-field-body"><label>id（snake_case）<input class="ef-id" placeholder="brand" value="${esc(f.id)}"></label><label>semantic_type（選填）<input class="ef-semantic" value="${esc(f.semantic_type || '')}"></label><label>unit（選填）<input class="ef-unit" value="${esc(f.unit || '')}"></label>${
+    ['number', 'rating', 'duration'].includes(f.type)
+      ? `<label>min<input class="ef-min" type="number" value="${f.min ?? ''}"></label><label>max<input class="ef-max" type="number" value="${f.max ?? ''}"></label>`
+      : ''
+  }${
+    f.type === 'text' ? `<label><input type="checkbox" class="ef-autocomplete" ${f.autocomplete ? 'checked' : ''}> 記住這個 App 過去輸入過的值（autocomplete）</label>` : ''
+  }${['select', 'multi_select'].includes(f.type) ? optionsEditorHtml(f) : ''}${
+    isCollection
+      ? `<label>項目名稱（item_label）<input class="ef-itemlabel" value="${esc(f.item_label || '')}"></label><fieldset class="collection"><legend>子欄位</legend><div class="editor-fields">${(f.fields || [])
+          .map((sf, si) => editorFieldHtml(sf, p, si, (f.fields || []).length))
+          .join('')}</div><button type="button" class="secondary ef-add-subfield">＋ 新增子欄位</button></fieldset>`
+      : ''
+  }</div></div>`;
+}
+
+function renderEditor() {
+  const d = editorState;
+  root.innerHTML = `<section><h1>${editorIsNew ? '視覺化建立 App' : '編輯 Spec'}</h1><label>App 名稱<input id="edAppName" value="${esc(d.app.name)}"></label><label>App ID（snake_case，建立後不要再改）<input id="edAppId" value="${esc(
+    d.app.id
+  )}" ${editorIsNew ? '' : 'disabled'}></label><label>Version<input id="edAppVersion" type="number" min="1" value="${d.app.version}"></label><label>互動模式<select id="edInteractionMode"><option value="form" ${
+    !d.app.interaction_mode || d.app.interaction_mode === 'form' ? 'selected' : ''
+  }>表單（一次填完）</option><option value="conversation" ${d.app.interaction_mode === 'conversation' ? 'selected' : ''}>對話（一次一題）</option></select></label><h2>欄位</h2><div class="editor-fields">${d.fields
+    .map((f, i) => editorFieldHtml(f, [], i, d.fields.length))
+    .join('')}</div><button type="button" class="secondary" id="edAddField">＋ 新增欄位</button><div id="editorErrors"></div><div class="actions"><button id="edSave">儲存</button><button type="button" id="edCancel" class="ghost">取消</button></div></section>`;
+  bindEditorEvents();
+}
+
+function bindEditorEvents() {
+  $('#edAppName').oninput = (e) => (editorState.app.name = e.target.value);
+  $('#edAppId').oninput = (e) => (editorState.app.id = e.target.value);
+  $('#edAppVersion').oninput = (e) => (editorState.app.version = Number(e.target.value) || 1);
+  $('#edInteractionMode').onchange = (e) => (editorState.app.interaction_mode = e.target.value);
+  $('#edAddField').onclick = () => {
+    getFieldsRef([]).push(blankField());
+    renderEditor();
+  };
+  $('#edSave').onclick = saveEditor;
+  $('#edCancel').onclick = () => (currentDef ? renderApp() : home());
+
+  document.querySelectorAll('.editor-field').forEach((card) => {
+    const path = card.dataset.path.split(',').map(Number);
+    const f = fieldAtPath(path);
+    const parentPath = path.slice(0, -1);
+    const index = path[path.length - 1];
+    const head = card.querySelector(':scope > .editor-field-head');
+    head.querySelector('.move-up').onclick = () => {
+      const fields = getFieldsRef(parentPath);
+      [fields[index - 1], fields[index]] = [fields[index], fields[index - 1]];
+      renderEditor();
+    };
+    head.querySelector('.move-down').onclick = () => {
+      const fields = getFieldsRef(parentPath);
+      [fields[index], fields[index + 1]] = [fields[index + 1], fields[index]];
+      renderEditor();
+    };
+    head.querySelector('.ef-remove').onclick = () => {
+      getFieldsRef(parentPath).splice(index, 1);
+      renderEditor();
+    };
+    head.querySelector('.ef-label').oninput = (e) => (f.label = e.target.value);
+    head.querySelector('.ef-type').onchange = (e) => {
+      f.type = e.target.value;
+      renderEditor();
+    };
+
+    const body = card.querySelector(':scope > .editor-field-body');
+    body.querySelector('.ef-id').oninput = (e) => (f.id = e.target.value);
+    body.querySelector('.ef-semantic').oninput = (e) => (f.semantic_type = e.target.value || undefined);
+    body.querySelector('.ef-unit').oninput = (e) => (f.unit = e.target.value || undefined);
+    const min = body.querySelector('.ef-min');
+    if (min) min.oninput = (e) => (f.min = e.target.value === '' ? undefined : Number(e.target.value));
+    const max = body.querySelector('.ef-max');
+    if (max) max.oninput = (e) => (f.max = e.target.value === '' ? undefined : Number(e.target.value));
+    const auto = body.querySelector('.ef-autocomplete');
+    if (auto) auto.onchange = (e) => (f.autocomplete = e.target.checked || undefined);
+    const itemLabel = body.querySelector('.ef-itemlabel');
+    if (itemLabel) itemLabel.oninput = (e) => (f.item_label = e.target.value);
+
+    const addSub = body.querySelector(':scope > .collection > .ef-add-subfield');
+    if (addSub)
+      addSub.onclick = () => {
+        f.fields = f.fields || [];
+        f.fields.push(blankField());
+        renderEditor();
+      };
+
+    const optionsEditor = body.querySelector(':scope > .options-editor');
+    if (optionsEditor) {
+      optionsEditor.querySelector('.ef-opt-add').onclick = () => {
+        f.options = f.options || [];
+        f.options.push({ value: '', label: '' });
+        renderEditor();
+      };
+      optionsEditor
+        .querySelectorAll('.ef-opt-value')
+        .forEach((el) => (el.oninput = (e) => (f.options[Number(el.dataset.oi)].value = e.target.value)));
+      optionsEditor
+        .querySelectorAll('.ef-opt-label')
+        .forEach((el) => (el.oninput = (e) => (f.options[Number(el.dataset.oi)].label = e.target.value)));
+      optionsEditor.querySelectorAll('.ef-opt-remove').forEach(
+        (el) =>
+          (el.onclick = () => {
+            f.options.splice(Number(el.dataset.oi), 1);
+            renderEditor();
+          })
+      );
+    }
+  });
+}
+
+async function saveEditor() {
+  const errs = validateDefinition(editorState);
+  const errBox = $('#editorErrors');
+  if (errs.length) {
+    errBox.innerHTML = `<div class="error"><b>驗證失敗</b><ul>${errs.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>`;
+    return;
+  }
+  try {
+    await api.createApp(editorState);
+    await openApp(editorState.app.id);
+  } catch (e) {
+    errBox.innerHTML = `<p class="error">儲存失敗：${esc(errorMessage(e))}</p>`;
+  }
 }
 
 $('#homeBtn').onclick = home;

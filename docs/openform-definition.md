@@ -24,6 +24,9 @@ fields:
 - `app.id` — `^[a-z][a-z0-9_]*$`. This is the app's permanent identity. Every Record produced by this app references `app.id`, so it must never change once real data exists.
 - `app.name` — human-facing display name. Free to edit at any time; editing it does not affect `app.id` or any existing Record.
 - `app.version` — positive integer. Bump it when you change what a field *means* (not for cosmetic label edits).
+- `app.interaction_mode` — optional, `form` (default) or `conversation`. Pure presentation, never affects the Record shape (same principle as `docs/architecture.md`'s "UI presentation and record semantics are separate concerns"):
+  - `form` — every field on one page, filled and submitted together (the original behavior).
+  - `conversation` — one field per screen, "下一步"/"上一步" to navigate, a `collection` field is offered as a repeated "add one more?" prompt, ending in a read-only review screen with a "完成對話" button that actually saves. Better for long Definitions filled one-handed on a phone (the motivating case: recording several mattresses store-visit by store-visit) than scrolling one long form.
 - `fields` — ordered array of field objects (see below).
 
 No other top-level keys are allowed (`additionalProperties: false` at the root and inside `app`).
@@ -129,10 +132,14 @@ Anything not on that list must use the `custom.` prefix (e.g. `custom.vendor_cod
 This format is intentionally generic — it is not tied to mattresses, workouts, or any one domain. Give an LLM a prompt like this (paste the rules above, or just this repo's `docs/openform-definition.md`, as context) to get a Definition for *any* data-collection use case:
 
 > Generate an `openform/definition/v1` YAML Definition for: **{describe what you want to collect, e.g. "tracking books I've read: title, author, rating, date finished, notes"}**.
-> Rules: output only the YAML, no prose. `app.id` is snake_case and stable. Every field has a snake_case `id` and a human `label`. Use `select`/`multi_select` with stable `value`s (never store a label as data). Use `collection` for repeating structure. Set `min`/`max` on any `number`/`rating`/`duration` field that has a natural range. Mark a `text` field `autocomplete: true` if the user will type the same handful of values repeatedly (e.g. store name) but it isn't a fixed enum. Only use these field types: text, textarea, number, rating, select, multi_select, boolean, date, time, datetime, duration, image, video, audio, location, barcode, signature, collection. Do not include any JavaScript, shell, SQL, or executable expressions — this is a pure data description.
+> Rules: output only the YAML, no prose. `app.id` is snake_case and stable. Every field has a snake_case `id` and a human `label`. Use `select`/`multi_select` with stable `value`s (never store a label as data). Use `collection` for repeating structure. Set `min`/`max` on any `number`/`rating`/`duration` field that has a natural range. Mark a `text` field `autocomplete: true` if the user will type the same handful of values repeatedly (e.g. store name) but it isn't a fixed enum. Set `app.interaction_mode: conversation` if the Definition has many fields and will typically be filled in one sitting on a phone; leave it unset (`form`) for short Definitions. Only use these field types: text, textarea, number, rating, select, multi_select, boolean, date, time, datetime, duration, image, video, audio, location, barcode, signature, collection. Do not include any JavaScript, shell, SQL, or executable expressions — this is a pure data description.
 
 The result pastes directly into OpenForm's "匯入 Spec" screen, which validates it (`validateDefinition`) and shows a preview (app name, version, field count) before creating the app — nothing is trusted purely because an LLM produced it.
 
 ## First-party templates
 
 `templates/mattress.yaml`, `templates/workout.yaml`, `templates/inspection.yaml` are worked examples of this contract, seeded automatically into every OpenForm backend on boot (`backend/src/migrate.js`) so they show up as ready-to-use Apps. They are starting points, not special-cased behavior in the Runtime — anything they can do, an LLM-generated Definition for an unrelated domain can do too.
+
+## Building a Definition visually
+
+Pasting LLM-generated YAML/JSON isn't the only way to author one. "視覺化建立" (home screen) and "編輯 Spec" (on an existing app) open a field-by-field editor: add/remove fields, change type, edit `min`/`max`/`options`/`semantic_type`/`unit`, and reorder siblings with the ▲/▼ buttons (kept as up/down buttons rather than a drag gesture — native HTML5 drag-and-drop doesn't fire on mobile touch without extra plumbing, and this app is mobile-first). It edits the same Definition object this document describes and saves through the same `validateDefinition`-checked `POST /api/apps`, so a Definition built visually, by hand, or by an LLM are indistinguishable afterward. Editing an existing app's spec this way auto-bumps `app.version`.

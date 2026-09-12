@@ -449,6 +449,93 @@ input[type="checkbox"] {
   background: color-mix(in srgb, var(--accent) 3%, var(--surface));
 }
 
+.editor-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.editor-field {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.editor-field-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+}
+
+.editor-field-head .ef-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.editor-field-head .ef-type {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.reorder-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reorder-btns button {
+  padding: 2px 8px;
+  font-size: 10px;
+  box-shadow: none;
+}
+
+.editor-field-body {
+  padding: 4px 12px 12px;
+}
+
+.editor-field-body label {
+  font-size: 12px;
+  margin: 10px 0 4px;
+}
+
+.options-editor .row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.options-editor .row input {
+  flex: 1;
+}
+
+.conversation-step {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.convo-progress {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 8px;
+}
+
+.conversation-step h1 {
+  margin-bottom: 18px;
+}
+
+.conversation-step .actions {
+  margin-top: 28px;
+}
+
 .spec-view {
   white-space: pre-wrap;
   word-break: break-word;

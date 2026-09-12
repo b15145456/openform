@@ -1,5 +1,29 @@
 # OpenForm Handoff
 
+## 2026-09-12 — Conversation 模式 + 視覺化 Spec 編輯器
+### 做了什麼
+- **`app.interaction_mode`**（`form` 預設 / `conversation`）：新增到 `spec/definition.schema.json`（`app` 物件底下）與 `shared/runtime.js` 的 `validateDefinition`，純粹是呈現方式，完全不影響 Record 格式。
+- **Conversation 模式**（`frontend/app.js`）：`runFieldSequence` 遞迴走訪 Definition 的 `fields`——一般欄位一次問一題（`askField`，支援上一步/下一步），遇到 `collection` 欄位就用「要新增一筆嗎？」的 yes/no 迴圈（`askAddItem`）收集，collection 內的子欄位遞迴用同一套邏輯處理（所以 workout.yaml 那種兩層巢狀 collection 也能正確運作）。全部問完後進到一個唯讀確認畫面（複用「檢視」的 `viewFieldHtml`），按「完成對話」才真的呼叫 API 存檔；也有「改用表單微調」可以跳回一般表單。`templates/mattress.yaml` 套用這個模式（門市快速記錄的主要情境）。
+- **視覺化 Spec 編輯器**（「視覺化建立」/「編輯 Spec」）：`editorState` 保存正在編輯的 Definition 物件，`editorFieldHtml` 遞迴渲染每個欄位卡片（含巢狀 collection），透過 `data-path`（如 `"2,1"` 代表 `fields[2].fields[1]`）定位任何深度的欄位做新增/刪除/搬移/改屬性。排序用 ▲▼ 按鈕而不是真正的拖曳手勢——原生 HTML5 drag-and-drop 在手機觸控上不可靠，這支 App 是手機優先，所以選擇可靠、跨裝置一致的按鈕方案，有跟使用者說明這個取捨。編輯既有 App 時會自動把 `app.version` +1，`app.id` 欄位鎖住不能改（避免不小心建立出孤兒 app）。
+- 修掉一個過程中發現的真實 scoping bug：編輯器裡 options editor（`.ef-opt-value` 等）原本用沒有 `:scope` 限定的 `body.querySelectorAll(...)`，如果一個 collection 欄位裡巢狀了一個 select 欄位，會不小心把巢狀欄位的 option 輸入框也綁到外層（錯誤的）`f` 物件上。修法是先抓 `:scope > .options-editor`（每個欄位卡片最多一個，且不可能同時是 collection），再從裡面查詢，徹底排除跨層污染的可能。
+
+### 實際驗證（真的開瀏覽器測，不是只看程式碼）
+- 本地起一次性 Docker Postgres + backend + `vite` dev server，用 Playwright（透過 npx 臨時安裝，headless Chromium）在 scratchpad 寫驅動腳本，實際點過：
+  1. 視覺化編輯器：新增 3 個欄位（text、select+2個選項、collection+1個巢狀子欄位）、用 ▲▼ 把 collection 欄位往上移一格、存檔；用「查看 Spec」讀回實際存的 YAML，欄位順序、巢狀結構、options 的 value/label 全部正確。
+  2. 拿編輯器建出來的 App 實際跑一次真正的表單：填文字欄位、選 select（存的是 stable value "b" 不是 label "Option B"）、在 collection 裡新增一筆巢狀子欄位資料、送出——用 API 讀回來確認 Postgres 裡的資料結構完全正確。
+  3. Conversation 模式：mattress_quote 的 22 個欄位（無 collection）一路一題一題走完，含一題 rating（點了按鈕 1）、多題 number/text，最後進確認畫面按「完成對話」——用 API 讀回來確認資料真的存進去了、內容跟填的一致。
+  4. 全程 `console --errors` 監控是 0 個 console error / page error。
+  5. 過程中一張截圖看起來像是評分按鈕「1」沒有顯示數字，另外寫了一支針對性的腳本直接讀那顆按鈕的 DOM textContent/computed style——證實文字跟樣式都正確，只是截圖當下的畫面繪製時機問題（false alarm），不是真的 bug。
+- 測完把 dev server、backend process、Docker container 都關掉/移除，沒有殘留。
+
+### 現況
+兩個大功能都做完並驗證過。之前 render.yaml/Neon 的部署路徑不受影響（純前端邏輯改動，沒有動到 schema 之外的 API 合約，沒有新增後端依賴）。
+
+### 下一步
+1. push 到 GitHub、確認 CI 綠燈、等 Render 自動部署，實地用手機測一次 conversation 模式跟視覺化編輯器。
+2. 如果之後真的需要手勢拖曳排序（而不是 ▲▼ 按鈕），需要另外評估用 Pointer Events 自己刻一套跨裝置的拖曳邏輯。
+3. `location`/`barcode`/`signature` 專用 UI、`templates` 對應 `examples/`，仍是既有待辦。
+
 ## 2026-09-12 — 第三輪視覺美化 + 使用者授權自動部署
 ### 做了什麼
 - 第三次視覺美化：標題/logo 換成 Manrope 顯示字體（Google Fonts）、hero 區塊加漸層底色與漸層文字標題、`h2` 加左側色條、卡片 hover 時顯示側邊色條、主要按鈕加發光陰影、App 圖示從裸 emoji 改成有底色的圓角徽章。

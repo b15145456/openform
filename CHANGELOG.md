@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.0] - 2026-09-12
+
+### Added
+- `app.interaction_mode: form | conversation` — an optional, purely presentational Definition property. `conversation` renders one field per screen (with back/next), offers a yes/no "add one more?" loop for `collection` fields, and ends in a read-only review screen with a "完成對話" button that actually saves. Applied to `mattress_quote`.
+- A visual, recursive Definition editor ("視覺化建立" on the home screen, "編輯 Spec" on an app screen): add/remove/reorder fields (including nested `collection` subfields), edit type/min/max/semantic_type/unit/options, all validated through the same `validateDefinition` and saved through the same `POST /api/apps` as a hand-written or LLM-generated spec. Reordering uses ▲/▼ buttons rather than a drag gesture — native HTML5 drag-and-drop isn't reliable on mobile touch, and this app is mobile-first.
+
+### Fixed
+- A real scoping bug in the new editor: the options-editor event bindings used an unscoped `querySelectorAll`, which could leak into a nested collection subfield's own options editor. Fixed by scoping to `:scope > .options-editor` first.
+
 ## [0.4.2] - 2026-09-12
 
 ### Changed

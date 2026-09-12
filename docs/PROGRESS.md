@@ -1,5 +1,10 @@
 # OpenForm Progress
 
+## 2026-09-12 — Conversation mode + visual spec editor
+- Added `app.interaction_mode` (`form`/`conversation`) as a pure presentation hint — a new one-question-at-a-time wizard flow for filling out records, ending in a review screen, aimed at fast one-handed data entry in the field. Applied to the mattress template, the actively-used in-store one.
+- Added a visual, recursive Definition editor (add/remove/reorder/edit fields including nested collections and select options) as an alternative to hand-writing or LLM-generating YAML.
+- Both features were verified with a real headless-browser (Playwright) session driving the actual dev server against a real Postgres — not just code review — confirming correct data end-to-end for both a hand-built and a conversation-collected record, with zero console errors.
+
 ## 2026-09-12 — Worked Record examples
 - Added canonical worked Record fixtures for Mattress, Workout, and Inspection under `examples/`.
 - Added CI regression tests that verify each fixture is an `openform/record/v1`, references the correct first-party Definition id/version, uses valid timestamps, and demonstrates nested Workout collections plus stable Inspection select values.

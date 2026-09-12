@@ -3,6 +3,7 @@ app:
   id: mattress_quote
   name: 床墊試躺 / 詢價紀錄
   version: 2
+  interaction_mode: conversation
 fields:
   - { id: store, label: 店家, type: text, autocomplete: true }
   - { id: brand, label: 品牌, type: text, autocomplete: true }

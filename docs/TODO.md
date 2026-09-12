@@ -25,6 +25,9 @@
 - [x] `text` 欄位可標記 `autocomplete: true`，UI 用 datalist 建議這個 App 裡該欄位過去輸入過的值（目前只支援頂層欄位，不含 collection 巢狀欄位）；mattress 範本的 `store`/`brand` 已套用。
 - [x] 紀錄列表新增「檢視」按鈕，唯讀顯示所有欄位（含 media 預覽），不用先進編輯畫面。
 - [x] `/api/uploads` 在缺少物件儲存憑證時回傳明確的 503 訊息，不再是模糊的「internal error」。
+- [x] `app.interaction_mode: form | conversation`——conversation 模式一次問一題、collection 用「新增一筆嗎？」的方式收集、最後一個唯讀確認畫面 + 「完成對話」才真的存檔。mattress_quote 範本已套用 conversation 模式。
+- [x] 視覺化 Definition 編輯器（「視覺化建立」/「編輯 Spec」）：新增/刪除/改型別/編輯 min-max/options/semantic_type/unit、collection 巢狀子欄位、▲▼ 排序（不是真正的拖拉手勢，因為原生 HTML5 drag-and-drop 在手機觸控上不可靠；如果之後真的想要手勢拖曳，需要另外用 Pointer Events 自己刻，這是一個可能的後續項目）。編輯既有 App 的 spec 會自動把 version + 1。
+- [ ] 手勢式拖曳排序（目前是 ▲▼ 按鈕，功能等價但不是真正的「拖」）。
 
 ## P2 — Production
 - [ ] k3s/Kubernetes target。
