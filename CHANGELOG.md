@@ -1,18 +1,22 @@
 # Changelog
 
-## [0.2.0-alpha.3] - 2026-09-12
+## [0.2.0-alpha.4] - 2026-09-12
 
 ### Added
-- Industry-standard GitOps delivery path: GitHub Actions → Docker → GHCR → Argo CD → Kubernetes/k3s → Traefik.
-- Multi-stage production container with nginx and health endpoint.
-- Kubernetes Deployment, Service, Ingress, probes and resource limits.
-- Argo CD Application with automated prune/self-heal.
-- CI publishes immutable commit-SHA image and `latest` only after tests/build succeed.
+- Automated immutable-image GitOps promotion after successful CI/container publishing.
+- GitHub Actions build cache.
+- RollingUpdate deployment policy and hardened pod/container security context.
+- Kubernetes NetworkPolicy.
+- Dependabot for npm, Actions and Docker dependencies.
+- One-command Argo CD bootstrap and deployment verification scripts.
+- Production deployment runbook.
 
 ### Deployment status
-- GitOps manifests are ready for cluster bootstrap.
-- Production host remains intentionally `openform.example.com` until the real DNS name is supplied.
-- Actual Argo CD sync requires access to the target Kubernetes/Argo CD environment.
+- Everything that can be repository-automated is configured.
+- Remaining production bootstrap requires the target cluster, Argo CD and DNS/operator credentials.
+
+## [0.2.0-alpha.3] - 2026-09-12
+- Added GitHub Actions → Docker → GHCR → Argo CD → Kubernetes/k3s → Traefik GitOps delivery.
 
 ## [0.2.0-alpha.2] - 2026-09-12
 - Runtime Definition validation, dynamic controls, tests and mobile Mattress workflow.

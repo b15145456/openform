@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
 permissions:
-  contents: read
+  contents: write
   packages: write
 jobs:
   test-build:
@@ -12,8 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 22
+        with: { node-version: 22 }
       - run: npm install
       - run: npm test
       - run: npm run build
@@ -36,3 +35,14 @@ jobs:
           tags: |
             ghcr.io/b15145456/openform:${{ github.sha }}
             ghcr.io/b15145456/openform:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Pin GitOps manifest to immutable image
+        run: |
+          sed -i "s#ghcr.io/b15145456/openform:[^[:space:]]*#ghcr.io/b15145456/openform:${GITHUB_SHA}#" deploy/k8s/deployment.yaml
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deploy/k8s/deployment.yaml
+          git commit -m "deploy: promote ${GITHUB_SHA} [skip ci]"
+          git push

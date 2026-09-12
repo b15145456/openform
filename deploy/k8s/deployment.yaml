@@ -5,16 +5,24 @@ metadata:
   namespace: openform
 spec:
   replicas: 2
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
   selector:
     matchLabels: { app: openform }
   template:
     metadata:
       labels: { app: openform }
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        seccompProfile: { type: RuntimeDefault }
       containers:
         - name: openform
-          image: ghcr.io/b15145456/openform:latest
-          imagePullPolicy: Always
+          image: ghcr.io/b15145456/openform:bootstrap
+          imagePullPolicy: IfNotPresent
           ports:
             - { name: http, containerPort: 8080 }
           readinessProbe:
@@ -28,3 +36,7 @@ spec:
           resources:
             requests: { cpu: 25m, memory: 32Mi }
             limits: { cpu: 250m, memory: 128Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities: { drop: ["ALL"] }
