@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0-alpha.1] - 2026-09-12
+
+### Added
+- Split the project into `frontend/` (Vite static app) and `backend/` (Express API), sharing definition/record logic via `shared/runtime.js`.
+- Postgres-backed persistence (`apps`, `records` tables) replacing browser localStorage; automatic idempotent migration/seed on backend boot.
+- REST API: `GET/POST /api/apps`, `GET/POST/PUT/DELETE /api/apps/:id/records`.
+- npm workspaces (`frontend`, `backend`) at the repo root.
+- Backend integration test suite (`backend/tests/api.test.js`) run against a real Postgres in CI (service container) and verified locally against Docker Postgres.
+- Free-tier deployment path via `render.yaml` (Render static site + Node web service) documented in `docs/deployment.md`, alongside the existing self-hosted k8s/Argo CD path (frontend-only, unchanged).
+- `qs`/`js-yaml` dependency overrides to close known advisories (`npm audit`: 0 vulnerabilities).
+
+### Changed
+- CI now also installs workspaces and runs backend tests against a Postgres service container before building.
+- `docs/USER_GUIDE.md` updated: data now lives in a shared server database, not per-browser localStorage.
+
 ## [0.2.0-alpha.4] - 2026-09-12
 
 ### Added

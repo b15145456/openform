@@ -1,1 +1,21 @@
-{"name":"openform","version":"0.1.0","private":true,"type":"module","scripts":{"dev":"vite --host 0.0.0.0","build":"vite build","test":"node --test tests/*.test.js"},"dependencies":{"js-yaml":"4.1.0"},"devDependencies":{"vite":"^7.1.0"}}
+{
+  "name": "openform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace frontend",
+    "build": "npm run build --workspace frontend",
+    "test": "node --test tests/*.test.js",
+    "start": "npm run start --workspace backend",
+    "backend:dev": "npm run dev --workspace backend",
+    "backend:migrate": "npm run migrate --workspace backend"
+  },
+  "overrides": {
+    "qs": "6.16.0"
+  }
+}

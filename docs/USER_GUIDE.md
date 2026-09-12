@@ -4,7 +4,7 @@
 OpenForm 把 YAML/JSON Definition 變成可以直接填寫資料的 Mini-App。LLM 可以協助你產生 Definition，但 OpenForm 執行時不依賴任何 LLM。
 
 ## 目前可用功能
-- 我的 App、內建床墊 App、CRUD、localStorage、JSON/CSV export。
+- 我的 App、內建床墊 App、CRUD、伺服器資料庫儲存、JSON/CSV export。
 - 貼上 YAML/JSON Definition，驗證後建立新 App。
 - text、textarea、number、rating、select、multi_select、boolean、date、time、datetime、duration。
 - collection 已有視覺化新增/移除/編輯，且可遞迴巢狀。例如 Workout 的 Exercises[] 裡面可再有 Sets[]。
@@ -20,10 +20,10 @@ OpenForm 把 YAML/JSON Definition 變成可以直接填寫資料的 Mini-App。L
 Definition 的 collection 可以包含 fields，而其中的 field 也可以再是 collection。Runtime 會依 Definition 遞迴建立 UI，使用者不需要編輯 JSON。Workout template 是標準範例：Workout → Exercises[] → Sets[]。
 
 ## 資料與隱私
-目前資料存在瀏覽器 localStorage。沒有帳號、沒有伺服器資料庫，也不會自動送資料給 LLM。換瀏覽器、清除網站資料或換裝置不會自動同步，因此重要資料請先匯出 JSON。
+資料現在存在後端的 Postgres 資料庫（前後端分離架構：`frontend/` 呼叫 `backend/` 的 REST API），不再只存在單一瀏覽器的 localStorage。換瀏覽器或換裝置都能看到同一份資料。目前沒有帳號系統，也不會自動送資料給 LLM。
 
 ## 多人使用
-目前不同人可以各自在自己的瀏覽器使用，但資料不共享。若需要多人看到同一批紀錄、跨裝置同步，才需要 Backend + Database + Authentication。
+目前沒有帳號/權限系統，所有連到同一個後端的使用者會看到同一份資料（沒有資料隔離）。若需要每個人只看到自己的資料，需要再加 Authentication；目前仍是單一共享工作區的定位。
 
 ## 尚未完成
-image/video/audio/location/barcode/signature 尚未有專用 runtime UI；尚未完成 production Argo CD 公開部署驗證。
+image/video/audio/location/barcode/signature 尚未有專用 runtime UI；帳號/權限（Authentication）尚未實作；正式的公開 URL 部署（見 `docs/deployment.md`）尚待實際上線驗證。
