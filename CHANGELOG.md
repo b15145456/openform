@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.2] - 2026-09-12
+
+### Changed
+- Third visual design pass: a display font (Manrope) for headings/logo, a gradient hero panel with gradient-text heading, an accent left-bar on `h2` section headings, a colored accent stripe that reveals on card hover, glowing shadow on primary buttons, and app-icon badges (rounded tile background instead of a bare emoji).
+
 ## [0.4.1] - 2026-09-12
 
 ### Added

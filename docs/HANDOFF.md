@@ -1,5 +1,13 @@
 # OpenForm Handoff
 
+## 2026-09-12 — 第三輪視覺美化 + 使用者授權自動部署
+### 做了什麼
+- 第三次視覺美化：標題/logo 換成 Manrope 顯示字體（Google Fonts）、hero 區塊加漸層底色與漸層文字標題、`h2` 加左側色條、卡片 hover 時顯示側邊色條、主要按鈕加發光陰影、App 圖示從裸 emoji 改成有底色的圓角徽章。
+- 使用者明確表示「每次做好沒什麼問題就自動部署上去」——之後只要本地建置/測試都過，直接 commit + push，不用每次都先問過。已同步記錄在 memory，往後 session 也會遵守。
+
+### 實際驗證
+- `npm run build` 與 `npm test`（10 條 shared tests）通過；CSS 沒有重複/衝突區塊（手動 grep 確認 `.hero` 只定義一次）。
+
 ## 2026-09-12 — 上傳修復、輸入體驗、唯讀檢視
 ### 做了什麼
 - **抓到並修好上傳失敗的根因**：Render 上 `POST /api/uploads` 回傳模糊的 `{"error":"internal error"}`（500）。原因是 `openform-backend` 這個 Render service 還沒填 `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`/`AWS_ENDPOINT_URL_S3`/`AWS_REGION`（上一輪 HANDOFF 有請使用者手動填，但可能還沒填或還沒重新部署）。`getSignedUrl` 在憑證缺失時會直接丟例外，被 generic error handler 吃成 500。修法：`storage.js` 新增 `storageConfigured()`，upload route 在呼叫 S3 前先檢查，缺憑證直接回 503 + 中文說明訊息，之後不管誰踩到這個問題都能立刻知道原因，不用再靠猜。

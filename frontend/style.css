@@ -16,6 +16,7 @@
   --radius-sm: 9px;
   --shadow-sm: 0 1px 2px rgba(20, 20, 15, 0.05);
   --shadow-md: 0 6px 20px rgba(20, 20, 15, 0.08);
+  --font-display: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -55,13 +56,14 @@ header {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
   border-bottom: 1px solid var(--border);
   padding: 14px max(18px, env(safe-area-inset-left));
   display: flex;
   justify-content: space-between;
   align-items: center;
-  backdrop-filter: saturate(180%) blur(8px);
+  backdrop-filter: saturate(180%) blur(10px);
+  -webkit-backdrop-filter: saturate(180%) blur(10px);
 }
 
 .brand {
@@ -74,20 +76,24 @@ header {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(160deg, var(--accent), var(--accent-hover));
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: linear-gradient(155deg, var(--accent), var(--accent-hover));
   color: white;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: 13px;
   letter-spacing: 0.02em;
   flex-shrink: 0;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 header strong {
   display: block;
+  font-family: var(--font-display);
   font-size: 19px;
+  font-weight: 800;
   letter-spacing: -0.01em;
   line-height: 1.2;
 }
@@ -107,8 +113,16 @@ header small {
 }
 
 .app-icon {
-  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  font-size: 22px;
   line-height: 1;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  margin-bottom: 2px;
 }
 
 main {
@@ -118,17 +132,22 @@ main {
 }
 
 h1 {
-  font-size: 28px;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
   letter-spacing: -0.02em;
   margin: 0 0 6px;
 }
 
 h2 {
-  font-size: 16px;
+  font-size: 13px;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin: 28px 0 10px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  margin: 32px 0 12px;
+  padding-left: 11px;
+  border-left: 3px solid var(--accent);
 }
 
 .card {
@@ -150,17 +169,36 @@ a.card {
   gap: 4px;
   width: 100%;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+button.card::before,
+a.card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(var(--accent), var(--accent-hover));
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
 button.card:hover,
 a.card:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
 }
 
+button.card:hover::before,
+a.card:hover::before {
+  opacity: 1;
+}
+
 .card b {
   font-size: 16px;
+  font-weight: 700;
 }
 
 .card span {
@@ -174,12 +212,25 @@ a.card:hover {
 }
 
 .hero {
-  padding: 24px 4px 8px;
+  padding: 28px 24px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(155deg, color-mix(in srgb, var(--accent) 10%, var(--surface)), var(--surface) 65%);
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border));
+  box-shadow: var(--shadow-sm);
+}
+
+.hero h1 {
+  background: linear-gradient(155deg, var(--text), var(--accent-hover) 140%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .hero p {
   color: var(--text-muted);
-  line-height: 1.5;
+  line-height: 1.6;
+  max-width: 46ch;
 }
 
 .muted {
@@ -207,17 +258,19 @@ button,
 .button {
   border: 0;
   border-radius: var(--radius-sm);
-  padding: 12px 16px;
+  padding: 12px 18px;
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 700;
   background: var(--accent);
   color: white;
   cursor: pointer;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 35%, transparent);
   transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
 
 button:hover {
   background: var(--accent-hover);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 button:active {
@@ -235,6 +288,7 @@ select:focus-visible {
 button.secondary {
   background: var(--accent-soft);
   color: var(--accent);
+  box-shadow: none;
 }
 
 button.secondary:hover {
@@ -244,6 +298,7 @@ button.secondary:hover {
 button.danger {
   background: var(--danger-bg);
   color: var(--danger);
+  box-shadow: none;
 }
 
 button.danger:hover {
@@ -254,6 +309,7 @@ button.ghost {
   background: transparent;
   color: var(--text-muted);
   padding: 8px 10px;
+  box-shadow: none;
 }
 
 button.ghost:hover {
