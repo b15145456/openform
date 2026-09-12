@@ -1,5 +1,29 @@
 # OpenForm Handoff
 
+## 2026-09-12 — 完整 RBAC + Audit Log（Better Auth + OpenFGA）
+### 做了什麼
+使用者要求：「幫我做好完整的 RBAC，我之後要分享給同事使用，另外幫我增加完善的 audit log，要記錄編輯相關操作，你自己循環測試，測試差不多覺得符合業界標準再告訴我」。過程中使用者進一步指定要串業界常用的開源軟體，並明確選擇「每個 App 各自分享權限」（Google Docs 風格）而不是單純的全域角色，之後又要求加上一層全域使用者等級。最終架構：
+
+- **身分認證（Authentication）— Better Auth**：自架、開源的 auth library（`better-auth` v1.7.4），取代原本手刻的 `password.js`/`session.js`（已刪除）。
+  - 用 `admin` plugin 管理使用者跟角色；用 `bearer` plugin 讓前端用 `Authorization: Bearer <token>` 呼叫 API，而不是 cookie——因為前後端分別部署在不同的 `onrender.com` 子網域，而 `onrender.com` 是 public suffix，跨子網域 cookie 無法可靠運作。
+  - `backend/src/auth/auth.js` 是一個 factory function（`createAuth()`），故意不在 import 時就建構單例：Better Auth 會在建構當下驗證資料庫 schema，如果在我們自己的 migration SQL 跑完之前就建構，會炸掉；改成先 `pool.query(SCHEMA)` 成功後才呼叫 `createAuth()`。
+  - 新增自助「變更密碼」畫面（`renderChangePassword()`），因為系統啟動時 bootstrap 的第一個 admin 帳號是用環境變數給的固定密碼，需要有辦法自己換掉。過程中抓到一個真的 bug：`authClient.changePassword({..., revokeOtherSessions: true})` 在我們用 bearer token（不是 cookie）的架構下，會把「目前這個 session」也一併撤銷掉，導致改完密碼馬上被登出——用 Playwright 實測重現後，拿掉 `revokeOtherSessions` 參數解決（這個功能本來就不是使用者要求的，是我自己主動加的安全性補強，簡化掉不影響任何需求）。
+- **授權（Authorization）— OpenFGA**：Auth0/Okta 開源的 ReBAC（relationship-based access control）引擎，實作 Google Zanzibar 模型，獨立服務、自己的 datastore。
+  - `backend/src/authz/fga.js`：`app` type 有 `owner`/`editor`/`viewer` 三種 relation，用 union + `computedUserset` 做繼承（owner ⊇ editor ⊇ viewer）；`editor`/`viewer` 額外允許 `user:*` wildcard，讓首發模板（mattress/workout/inspection）可以直接公開分享給「任何登入使用者」，不用每個同事手動分享一次。
+  - `backend/src/routes/access.js`（`/api/apps/:id/access`）：只有該 App 的 owner 能查看/新增/移除分享（用 email 查使用者、grant/revoke relation）。
+  - 中途使用者一度問「我不是用 OpenFGA 嗎，怎麼還有 Better Auth」——釐清兩者職責不同（誰登入了 vs. 這個人對這個 App 能做什麼），必須共存，不是互斥選項。
+- **全域角色（Role cap）**：在 per-app 分享之上，再疊一層全域三級角色——`admin`（看得到/管得到全部 App，也能新增/管理帳號）、`user`（一般使用者）、`viewer`（全域只能檢視，即使某個 App 把他分享成 editor，也會被這層蓋掉，改不了）。`backend/src/auth/middleware.js` 的 `requireAppAccess(relation)` 會先擋 `role==='viewer'` 且要求非 viewer 權限的請求，才去問 OpenFGA。
+- **Audit log**：新的 `audit_log` 表（`backend/src/migrate.js`）記錄所有 App/Record 的建立/更新/刪除/分享操作（操作者 id/email、時間、動作、實體、detail JSON）。`backend/src/routes/auditLog.js`（`GET /api/audit-log`，僅 `admin` 可查、分頁）。
+
+### 實際驗證（自己循環測試，直到覺得符合業界標準）
+- 全程用真實 Docker Postgres + 真實 Docker OpenFGA（非 mock），backend 11 條自動化測試全過（`npm test --workspace backend`）：健康檢查/未登入 401/admin 看得到模板/同事透過 wildcard 看得到公開模板/紀錄 CRUD/上傳型別檢查/無效 definition 擋下/刪除 App 連帶刪除紀錄/**完整分享生命週期**（建立→外人 403→分享→外人能看不能編輯不能刪除）/**全域 viewer 角色即使被分享成 editor 也編輯不了**/audit log 只有 admin 能看且內容正確。
+- 過程中抓到一個我自己測試腳本的假陽性（不是產品 bug）：`login()` helper 原本等 `text=我的 App` 出現才算登入完成，但這個文字在登入前的靜態 header 就存在了，導致「同事應該看到 0 個 App」之類的斷言在畫面還沒真的載入完成時就檢查，得到錯誤的假訊號。寫了一個獨立的 debug 腳本延長等待時間後拿到正確結果（3-4 個 App），才確認是測試腳本本身的問題，改成等待只有登入後才會出現的 `#paste` 選擇器，重跑後全部斷言正確。
+- 也驗證了 OpenFGA 用 Postgres datastore（而不是預設的記憶體 datastore）時，重啟容器後分享資料還在——這對應 Render 免費方案閒置會 spin down 的行為，如果用記憶體 datastore 每次冷啟動都會把所有分享資料清空。
+- 前端 `npm run build` 通過；用 Playwright 對本地環境跑完整 RBAC 情境（admin 建立同事帳號、同事用視覺化編輯器建立私人 App、分享給一個「viewer」等級帳號、確認該帳號看得到但編輯/刪除按鈕都不見、確認不相關的第三人看不到、確認 audit log 有正確記錄），全程 0 個 console error。也單獨驗證了變更密碼的三種情況（密碼錯誤/兩次新密碼不一致/成功），成功後仍停留在登入狀態且能用新密碼重新登入。
+
+### 現況
+本地驗證完成，準備 commit/push。**生產環境還沒部署**——Render 上還沒設定 `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL`/`INITIAL_ADMIN_EMAIL`/`INITIAL_ADMIN_PASSWORD`/`FGA_API_URL`/`FGA_API_KEY` 這些新環境變數，也還沒建立新的 `openform-fga` Render 服務、沒跑過一次性的 OpenFGA production Postgres migration。這些是下一步，完成後才能對使用者回報「符合業界標準」。
+
 ## 2026-09-12 — 補刪除 App、匯入覆蓋警告、效能修正
 ### 做了什麼
 - 使用者檢查功能完整性時發現：**沒辦法刪除 App**，只能刪紀錄。加了 `DELETE /api/apps/:id`（records 靠既有的 FK cascade 自動一起刪掉）與前端「刪除 App」按鈕，確認訊息會講清楚會連紀錄一起永久刪除。

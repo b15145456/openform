@@ -1,12 +1,15 @@
 import yaml from 'js-yaml';
 import { validateDefinition, csvEscape, FIELD_TYPES } from '../shared/runtime.js';
-import { api, uploadFile } from './api.js';
+import { api, uploadFile, AuthError } from './api.js';
+import { authClient, setToken, getToken } from './auth-client.js';
 
 const $ = (s) => document.querySelector(s);
 const root = $('#app');
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const APP_ICONS = { mattress_quote: '🛏️', workout: '🏋️', inspection: '🔍' };
 const appIcon = (id) => APP_ICONS[id] || '📋';
+
+let currentUser = null; // { id, email, role }
 
 let current = null; // current app id
 let currentDef = null; // current app definition
@@ -22,6 +25,106 @@ function bindBack(fn) {
   if (btn) btn.onclick = fn;
 }
 
+const ROLE_LABEL = { admin: '管理者', user: '一般使用者', viewer: '只能檢視' };
+
+function renderHeaderUser() {
+  const el = $('#headerUser');
+  if (!currentUser) {
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = `<span class="muted" style="margin-right:10px;font-size:13px">${esc(currentUser.email)}（${esc(ROLE_LABEL[currentUser.role] || currentUser.role)}）</span><button id="changePasswordBtn" class="ghost">變更密碼</button><button id="logoutBtn" class="ghost">登出</button>`;
+  $('#changePasswordBtn').onclick = renderChangePassword;
+  $('#logoutBtn').onclick = async () => {
+    try {
+      await authClient.signOut();
+    } catch {
+      /* ignore — we're clearing local state regardless */
+    }
+    setToken(null);
+    currentUser = null;
+    renderHeaderUser();
+    renderLogin();
+  };
+}
+
+function renderLogin(message = '') {
+  currentUser = null;
+  renderHeaderUser();
+  root.innerHTML = `<section class="hero"><h1>登入</h1><p>請使用管理者建立的帳號登入 OpenForm。</p>${
+    message ? `<div class="error">${esc(message)}</div>` : ''
+  }<form id="loginForm"><label>Email<input id="loginEmail" type="email" required autocomplete="username"></label><label>密碼<input id="loginPassword" type="password" required autocomplete="current-password"></label><div class="actions"><button type="submit">登入</button></div></form></section>`;
+  $('#loginForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const email = $('#loginEmail').value;
+    const password = $('#loginPassword').value;
+    try {
+      const { data, error } = await authClient.signIn.email(
+        { email, password },
+        {
+          onSuccess: (ctx) => setToken(ctx.response.headers.get('set-auth-token')),
+        }
+      );
+      if (error || !data) {
+        renderLogin(error?.message || '登入失敗，請確認 email/密碼是否正確');
+        return;
+      }
+      currentUser = data.user;
+      renderHeaderUser();
+      await home();
+    } catch (err) {
+      renderLogin('登入失敗：' + errorMessage(err));
+    }
+  };
+}
+
+function renderChangePassword() {
+  root.innerHTML = `<section class="hero">${backBtnHtml}<h1>變更密碼</h1><form id="changePasswordForm"><label>目前密碼<input id="cpCurrent" type="password" required autocomplete="current-password"></label><label>新密碼<input id="cpNew" type="password" required minlength="8" autocomplete="new-password"></label><label>確認新密碼<input id="cpConfirm" type="password" required minlength="8" autocomplete="new-password"></label><div class="actions"><button type="submit">變更密碼</button></div></form></section>`;
+  bindBack(() => home());
+  $('#changePasswordForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const currentPassword = $('#cpCurrent').value;
+    const newPassword = $('#cpNew').value;
+    const confirm = $('#cpConfirm').value;
+    if (newPassword !== confirm) {
+      alert('兩次輸入的新密碼不一致');
+      return;
+    }
+    try {
+      const { error } = await authClient.changePassword({ currentPassword, newPassword });
+      if (error) {
+        alert('變更密碼失敗：' + (error.message || '請確認目前密碼是否正確'));
+        return;
+      }
+      alert('密碼已變更');
+      await home();
+    } catch (err) {
+      alert('變更密碼失敗：' + errorMessage(err));
+    }
+  };
+}
+
+async function boot() {
+  if (!getToken()) {
+    renderLogin();
+    return;
+  }
+  try {
+    const { data } = await authClient.getSession();
+    if (!data) {
+      setToken(null);
+      renderLogin();
+      return;
+    }
+    currentUser = data.user;
+    renderHeaderUser();
+    await home();
+  } catch {
+    setToken(null);
+    renderLogin();
+  }
+}
+
 async function home() {
   current = null;
   root.innerHTML = '<p>載入中…</p>';
@@ -29,10 +132,15 @@ async function home() {
   try {
     apps = await api.listApps();
   } catch (e) {
+    if (e instanceof AuthError) return renderLogin('登入已過期，請重新登入');
     root.innerHTML = `<p class="error">無法連線到伺服器：${esc(errorMessage(e))}</p>`;
     return;
   }
-  root.innerHTML = `<section class="hero"><h1>我的 App</h1><p>Definition-driven data collection。資料儲存在伺服器資料庫中。</p><div class="actions"><button id="paste">匯入 Spec</button><button id="build" class="secondary">視覺化建立</button></div></section><section><h2>Apps</h2>${
+  const adminLinks =
+    currentUser?.role === 'admin'
+      ? `<button id="userAdmin" class="secondary">使用者管理</button><button id="auditLogBtn" class="secondary">稽核紀錄</button>`
+      : '';
+  root.innerHTML = `<section class="hero"><h1>我的 App</h1><p>Definition-driven data collection。資料儲存在伺服器資料庫中。</p><div class="actions"><button id="paste">匯入 Spec</button><button id="build" class="secondary">視覺化建立</button>${adminLinks}</div></section><section><h2>Apps</h2>${
     apps.length
       ? `<div class="cards">${apps
           .map(
@@ -44,6 +152,8 @@ async function home() {
   }</section>`;
   $('#paste').onclick = renderImportForm;
   $('#build').onclick = () => renderSpecEditor(null);
+  if ($('#userAdmin')) $('#userAdmin').onclick = renderUserAdmin;
+  if ($('#auditLogBtn')) $('#auditLogBtn').onclick = renderAuditLog;
   document.querySelectorAll('.appcard').forEach((x) => (x.onclick = () => openApp(x.dataset.id)));
 }
 
@@ -56,6 +166,8 @@ async function openApp(id) {
   try {
     [currentDef, currentRecords] = await Promise.all([api.getApp(id), api.listRecords(id)]);
   } catch (e) {
+    clearTimeout(slowNotice);
+    if (e instanceof AuthError) return renderLogin('登入已過期，請重新登入');
     root.innerHTML = `${backBtnHtml}<p class="error">無法載入 App：${esc(errorMessage(e))}</p>`;
     bindBack(home);
     return;
@@ -73,30 +185,43 @@ async function refreshRecords() {
 function renderApp() {
   const d = currentDef;
   const rs = currentRecords;
-  root.innerHTML = `${backBtnHtml}<section><h1>${esc(d.app.name)}</h1><div class="actions"><button id="new">新增紀錄</button><button id="spec" class="secondary">查看 Spec</button><button id="editSpec" class="secondary">編輯 Spec</button><button id="json">匯出 JSON</button><button id="csv">匯出 CSV</button><button id="deleteApp" class="danger">刪除 App</button><button id="back" class="ghost">返回</button></div></section><section><h2>紀錄</h2>${
+  const access = d._access || { canEdit: true, canDelete: true };
+  root.innerHTML = `${backBtnHtml}<section><h1>${esc(d.app.name)}</h1><div class="actions">${
+    access.canEdit ? '<button id="new">新增紀錄</button>' : ''
+  }<button id="spec" class="secondary">查看 Spec</button>${
+    access.canEdit ? '<button id="editSpec" class="secondary">編輯 Spec</button>' : ''
+  }${access.canDelete ? '<button id="shareApp" class="secondary">分享</button>' : ''}<button id="json">匯出 JSON</button><button id="csv">匯出 CSV</button>${
+    access.canDelete ? '<button id="deleteApp" class="danger">刪除 App</button>' : ''
+  }<button id="back" class="ghost">返回</button></div></section><section><h2>紀錄</h2>${
     rs.length
       ? `<div class="cards">${rs
           .map(
             (r) =>
-              `<div class="card"><b>${esc(r.data.brand || r.data.store || r.id)}</b><span>${new Date(r.updated_at).toLocaleString()}</span><div class="actions"><button class="secondary" data-view="${esc(r.id)}">檢視</button><button data-edit="${esc(r.id)}">編輯</button><button class="danger" data-del="${esc(r.id)}">刪除</button></div></div>`
+              `<div class="card"><b>${esc(r.data.brand || r.data.store || r.id)}</b><span>${new Date(r.updated_at).toLocaleString()}</span><div class="actions"><button class="secondary" data-view="${esc(r.id)}">檢視</button>${
+                access.canEdit
+                  ? `<button data-edit="${esc(r.id)}">編輯</button><button class="danger" data-del="${esc(r.id)}">刪除</button>`
+                  : ''
+              }</div></div>`
           )
           .join('')}</div>`
       : '<p class="empty-state">尚無紀錄，點「新增紀錄」開始。</p>'
   }</section>`;
-  $('#new').onclick = () => form();
+  if ($('#new')) $('#new').onclick = () => form();
   $('#spec').onclick = renderSpecView;
-  $('#editSpec').onclick = () => renderSpecEditor(d);
+  if ($('#editSpec')) $('#editSpec').onclick = () => renderSpecEditor(d);
+  if ($('#shareApp')) $('#shareApp').onclick = () => renderShareDialog(d);
   $('#json').onclick = () => download(`${current}.json`, JSON.stringify(rs, null, 2), 'application/json');
   $('#csv').onclick = () => exportCsv(d, rs);
-  $('#deleteApp').onclick = async () => {
-    if (!confirm(`確定要刪除「${d.app.name}」嗎？裡面的 ${rs.length} 筆紀錄會一起被永久刪除，無法復原。`)) return;
-    try {
-      await api.deleteApp(current);
-      await home();
-    } catch (e) {
-      alert('刪除失敗：' + errorMessage(e));
-    }
-  };
+  if ($('#deleteApp'))
+    $('#deleteApp').onclick = async () => {
+      if (!confirm(`確定要刪除「${d.app.name}」嗎？裡面的 ${rs.length} 筆紀錄會一起被永久刪除，無法復原。`)) return;
+      try {
+        await api.deleteApp(current);
+        await home();
+      } catch (e) {
+        alert('刪除失敗：' + errorMessage(e));
+      }
+    };
   $('#back').onclick = home;
   bindBack(home);
   document.querySelectorAll('[data-view]').forEach((x) => (x.onclick = () => renderView(x.dataset.view)));
@@ -811,5 +936,147 @@ async function saveEditor() {
   }
 }
 
-$('#homeBtn').onclick = home;
-home();
+const RELATION_LABEL = { owner: '擁有者（可刪除/可再分享）', editor: '可編輯', viewer: '只能檢視' };
+
+async function renderShareDialog(def) {
+  root.innerHTML = `${backBtnHtml}<section><h1>分享「${esc(def.app.name)}」</h1><p class="muted">輸入同事的 email（要先由管理者建立帳號），選擇權限後新增。</p><form id="shareForm" class="row"><input id="shareEmail" type="email" placeholder="colleague@example.com" required><select id="shareRelation"><option value="viewer">只能檢視</option><option value="editor">可編輯</option><option value="owner">擁有者</option></select><button type="submit">新增</button></form><div id="shareErrors"></div><h2>目前有權限的人</h2><div id="shareList"><p class="muted">載入中…</p></div></section>`;
+  bindBack(() => renderApp());
+  const grants = () => api.listAccess(def.app.id);
+  async function refreshList() {
+    const list = $('#shareList');
+    try {
+      const rows = await grants();
+      list.innerHTML = rows.length
+        ? rows
+            .map(
+              (g) =>
+                `<div class="card"><b>${esc(g.email || g.userId)}</b><span>${esc(RELATION_LABEL[g.relation] || g.relation)}</span><div class="actions"><button class="danger" data-revoke="${esc(g.userId)}">移除</button></div></div>`
+            )
+            .join('')
+        : '<p class="empty-state">目前沒有分享給任何人。</p>';
+      document.querySelectorAll('[data-revoke]').forEach(
+        (btn) =>
+          (btn.onclick = async () => {
+            if (!confirm('確定要移除這個人的權限嗎？')) return;
+            try {
+              await api.revokeAccess(def.app.id, btn.dataset.revoke);
+              await refreshList();
+            } catch (e) {
+              alert('移除失敗：' + errorMessage(e));
+            }
+          })
+      );
+    } catch (e) {
+      list.innerHTML = `<p class="error">載入失敗：${esc(errorMessage(e))}</p>`;
+    }
+  }
+  $('#shareForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const email = $('#shareEmail').value;
+    const relation = $('#shareRelation').value;
+    try {
+      await api.grantAccess(def.app.id, email, relation);
+      $('#shareEmail').value = '';
+      $('#shareErrors').innerHTML = '';
+      await refreshList();
+    } catch (err) {
+      $('#shareErrors').innerHTML = `<p class="error">${esc(errorMessage(err))}</p>`;
+    }
+  };
+  await refreshList();
+}
+
+async function renderUserAdmin() {
+  root.innerHTML = `${backBtnHtml}<section><h1>使用者管理</h1><p class="muted">建立同事帳號、指定權限等級。</p><form id="newUserForm"><label>Email<input id="newUserEmail" type="email" required></label><label>暫時密碼（請同事登入後自行更換）<input id="newUserPassword" type="text" required minlength="8"></label><label>權限等級<select id="newUserRole"><option value="user">一般使用者（可自建/編輯 App，需被分享才看得到別人的 App）</option><option value="viewer">只能檢視（永遠不能編輯，即使被分享為可編輯）</option><option value="admin">管理者（看得到全部、可管理帳號）</option></select></label><div class="actions"><button type="submit">建立帳號</button></div></form><div id="newUserError"></div><h2>所有使用者</h2><div id="userList"><p class="muted">載入中…</p></div></section>`;
+  bindBack(home);
+  async function refreshUsers() {
+    const list = $('#userList');
+    try {
+      const { data, error } = await authClient.admin.listUsers({ query: { limit: 200 } });
+      if (error) throw new Error(error.message || 'list failed');
+      list.innerHTML = data.users
+        .map(
+          (u) =>
+            `<div class="card"><b>${esc(u.email)}</b><span>${esc(ROLE_LABEL[u.role] || u.role || 'user')}</span><div class="actions">${['admin', 'user', 'viewer']
+              .map((r) => `<button class="secondary" data-setrole="${esc(u.id)}" data-role="${r}" ${u.role === r ? 'disabled' : ''}>設為${esc(ROLE_LABEL[r])}</button>`)
+              .join('')}${u.id === currentUser.id ? '' : `<button class="danger" data-removeuser="${esc(u.id)}">刪除帳號</button>`}</div></div>`
+        )
+        .join('');
+      document.querySelectorAll('[data-setrole]').forEach(
+        (btn) =>
+          (btn.onclick = async () => {
+            try {
+              await authClient.admin.setRole({ userId: btn.dataset.setrole, role: btn.dataset.role });
+              await refreshUsers();
+            } catch (e) {
+              alert('設定失敗：' + errorMessage(e));
+            }
+          })
+      );
+      document.querySelectorAll('[data-removeuser]').forEach(
+        (btn) =>
+          (btn.onclick = async () => {
+            if (!confirm('確定要刪除這個帳號嗎？')) return;
+            try {
+              await authClient.admin.removeUser({ userId: btn.dataset.removeuser });
+              await refreshUsers();
+            } catch (e) {
+              alert('刪除失敗：' + errorMessage(e));
+            }
+          })
+      );
+    } catch (e) {
+      list.innerHTML = `<p class="error">載入失敗：${esc(errorMessage(e))}</p>`;
+    }
+  }
+  $('#newUserForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const email = $('#newUserEmail').value;
+    const password = $('#newUserPassword').value;
+    const role = $('#newUserRole').value;
+    try {
+      const { error } = await authClient.admin.createUser({ email, password, name: email.split('@')[0], role });
+      if (error) throw new Error(error.message || 'create failed');
+      $('#newUserEmail').value = '';
+      $('#newUserPassword').value = '';
+      $('#newUserError').innerHTML = '';
+      await refreshUsers();
+    } catch (err) {
+      $('#newUserError').innerHTML = `<p class="error">${esc(errorMessage(err))}</p>`;
+    }
+  };
+  await refreshUsers();
+}
+
+async function renderAuditLog() {
+  root.innerHTML = `${backBtnHtml}<section><h1>稽核紀錄</h1><p class="muted">記錄所有 App / 紀錄的新增、修改、刪除、分享操作。</p><div id="auditList"><p class="muted">載入中…</p></div></section>`;
+  bindBack(home);
+  const AUDIT_LABEL = {
+    'app.create': '建立 App',
+    'app.update': '更新 App Spec',
+    'app.delete': '刪除 App',
+    'app.share': '分享 App',
+    'app.unshare': '取消分享',
+    'record.create': '新增紀錄',
+    'record.update': '編輯紀錄',
+    'record.delete': '刪除紀錄',
+  };
+  try {
+    const entries = await api.listAuditLog();
+    $('#auditList').innerHTML = entries.length
+      ? `<div class="compare"><table><tr><th>時間</th><th>操作者</th><th>動作</th><th>對象</th></tr>${entries
+          .map(
+            (e) =>
+              `<tr><td>${new Date(e.created_at).toLocaleString()}</td><td>${esc(e.actor_email || '(已刪除的帳號)')}</td><td>${esc(
+                AUDIT_LABEL[e.action] || e.action
+              )}</td><td>${esc(e.entity_id)}</td></tr>`
+          )
+          .join('')}</table></div>`
+      : '<p class="empty-state">目前沒有任何紀錄。</p>';
+  } catch (e) {
+    $('#auditList').innerHTML = `<p class="error">載入失敗：${esc(errorMessage(e))}</p>`;
+  }
+}
+
+$('#homeBtn').onclick = () => (currentUser ? home() : renderLogin());
+boot();

@@ -1,5 +1,10 @@
 # OpenForm Progress
 
+## 2026-09-12 — RBAC, per-app sharing, and audit logging
+- OpenForm moved from a single shared workspace (no accounts) to a real multi-user system: email/password login (Better Auth), Google-Docs-style per-app owner/editor/viewer sharing (OpenFGA), a global admin/user/viewer role cap on top, and a full audit log of every app/record mutation, admin-only to view.
+- Both are industry-standard open-source projects rather than hand-rolled auth/permission code, chosen after explicit discussion: Better Auth for authentication (bearer tokens, since frontend/backend live on separate `onrender.com` subdomains where cookies don't cross reliably), OpenFGA for authorization (a Zanzibar-style ReBAC engine, since the requirement was per-resource sharing, not just fixed global roles).
+- Verified against real infrastructure end to end: 11 backend tests against a real Postgres + real OpenFGA container (including a full sharing lifecycle and the global-viewer-role-overrides-per-app-editor-grant case), plus a Playwright run through the same scenarios in an actual browser with zero console errors. Not yet deployed to production — see `docs/TODO.md`.
+
 ## 2026-09-12 — Conversation mode + visual spec editor
 - Added `app.interaction_mode` (`form`/`conversation`) as a pure presentation hint — a new one-question-at-a-time wizard flow for filling out records, ending in a review screen, aimed at fast one-handed data entry in the field. Applied to the mattress template, the actively-used in-store one.
 - Added a visual, recursive Definition editor (add/remove/reorder/edit fields including nested collections and select options) as an alternative to hand-writing or LLM-generating YAML.

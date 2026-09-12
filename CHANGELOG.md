@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0] - 2026-09-12
+
+### Added
+- Authentication via [Better Auth](https://better-auth.com): email/password login, session tokens delivered as bearer tokens (not cookies, since frontend/backend are on separate `onrender.com` subdomains). A self-service "變更密碼" (change password) screen. The first admin account is bootstrapped on first boot from `INITIAL_ADMIN_EMAIL`/`INITIAL_ADMIN_PASSWORD`.
+- Per-app sharing via [OpenFGA](https://openfga.dev), a Zanzibar-style ReBAC authorization engine: each app has owner/editor/viewer relations (owner ⊇ editor ⊇ viewer), managed from a new share dialog (`GET/POST/DELETE /api/apps/:id/access`). First-party starter templates are granted to every logged-in user via a wildcard grant instead of needing to be shared one by one.
+- A global role cap layered on top of per-app sharing: `admin` (sees/manages every app, manages user accounts), `user` (regular access to apps shared with them), `viewer` (can never edit or delete, even on an app shared to them as editor elsewhere).
+- Audit log (`audit_log` table, `GET /api/audit-log`, admin-only): every app/record create/update/delete/share action is recorded with the actor, timestamp, and a detail payload.
+- New `openform-fga` Render service (Docker image `openfga/openfga`) in `render.yaml`, backed by the same Neon Postgres so sharing grants survive the free tier's spin-down-on-idle restarts.
+
+### Changed
+- All `apps`/`records` routes now require authentication and are gated by the relevant OpenFGA relation (`viewer` to read, `editor` to write, `owner` to delete/share/manage access).
+
 ## [0.7.1] - 2026-09-12
 
 ### Added

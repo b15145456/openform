@@ -39,6 +39,9 @@
 
 ## P3 — Shared data
 - [x] Backend/API/DB（Express + Postgres，見 `backend/`）。
-- [ ] Auth + RBAC（目前是單一共享工作區，沒有帳號/資料隔離；使用者要求要準備分享給同事，正在做完整的 RBAC + audit log，見下一則 HANDOFF）。
+- [x] Auth + RBAC：Better Auth（email/password + bearer token，因前後端在不同 onrender.com 子網域無法共用 cookie）處理身分認證；三層全域角色（`admin` 看得到/管得到全部、`user` 一般使用者、`viewer` 全域只能檢視，即使某個 App 被分享成 editor 也一樣）；OpenFGA（ReBAC）處理每個 App 的 owner/editor/viewer 分享（Google Docs 風格），首發模板用 `user:*` wildcard 公開分享給所有登入使用者。見 `docs/authentication.md`、`docs/deployment.md` Path A 的 OpenFGA 小節。
+- [x] Audit log：所有 App/Record 的建立/更新/刪除/分享操作都會記錄到 `audit_log` 表（含操作者、時間、before/after detail），只有 `admin` 能在「稽核紀錄」畫面查看。
+- [ ] 生產環境實際部署 RBAC/OpenFGA/audit log（本地已用真實 Postgres + OpenFGA Docker 驗證通過 11 條 backend 測試 + 完整 Playwright RBAC 情境測試；尚未在 Render 上設定新環境變數、跑一次性的 OpenFGA production migration）。
+- [ ] 自助變更密碼以外，尚未有「忘記密碼」流程（目前帳號都由 admin 建立/重設）。
 - [x] 刪除 App（含 cascade 刪除底下所有紀錄）。
 - [x] 匯入 Spec 如果 id 撞到既有 App 會先警告，不會無聲覆蓋。

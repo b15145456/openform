@@ -26,7 +26,25 @@ A real Neon project is already provisioned and linked to this repo:
 ### Notes
 - The backend free instance spins down after inactivity; the first request after idling takes ~30-60s to wake up.
 - Migrations run automatically and idempotently at backend boot (`backend/src/migrate.js`) — no manual migration step needed.
-- This path was verified locally in two stages: first against a throwaway Docker Postgres container, then against the real Neon database above. Actual deployment onto Render has not been done yet — that still needs a Render account. See `docs/HANDOFF.md`.
+- Live and verified with real traffic: https://openform-frontend.onrender.com / https://openform-backend.onrender.com.
+
+### Auth/RBAC/OpenFGA setup (required — added after the initial deployment above)
+Adds a third Render service (`openform-fga`, an OpenFGA container) plus new env vars on `openform-backend`. See `docs/authentication.md` for what each piece does.
+
+1. **Generate two secrets** (once, keep them somewhere durable — a password manager, not just this terminal):
+   - `openssl rand -base64 32` → `BETTER_AUTH_SECRET`.
+   - `openssl rand -base64 32` → a preshared key, used as both `FGA_API_KEY` (on the backend) and `OPENFGA_AUTHN_PRESHARED_KEYS` (on the FGA service) — they must be the same value.
+2. **One-time OpenFGA schema migration against the production database** — OpenFGA needs its own tables in the same Postgres database (separate from the `apps`/`records`/Better Auth tables `backend/src/migrate.js` manages):
+   ```bash
+   docker run --rm openfga/openfga migrate --datastore-engine postgres --datastore-uri '<production Neon DATABASE_URL>'
+   ```
+   Run this once, before the `openform-fga` service first boots against that database.
+3. **Create the `openform-fga` service** by syncing the Render Blueprint (`render.yaml` already declares it) or adding it manually with: image `docker.io/openfga/openfga:latest`, command `run`, health check `/healthz`, plan `free`. Set its env vars: `OPENFGA_DATASTORE_ENGINE=postgres`, `OPENFGA_DATASTORE_URI` (same Neon `DATABASE_URL` as the backend), `OPENFGA_AUTHN_METHOD=preshared`, `OPENFGA_AUTHN_PRESHARED_KEYS` (the preshared key from step 1). Postgres-backed, not the default in-memory datastore — the free tier's spin-down-on-idle would otherwise wipe every sharing grant on restart.
+4. **Set new env vars on `openform-backend`**: `BETTER_AUTH_SECRET` (step 1), `BETTER_AUTH_URL` (this service's own public URL, e.g. `https://openform-backend.onrender.com`), `INITIAL_ADMIN_EMAIL`/`INITIAL_ADMIN_PASSWORD` (only used once, when the `user` table is empty — pick a real email and a temporary password, then change it via the app's "變更密碼" screen after first login), `FGA_API_URL` (the `openform-fga` service's public URL from step 3), `FGA_API_KEY` (the preshared key from step 1).
+5. Redeploy `openform-backend` so it picks up the new env vars. On boot it seeds the starter templates and — only if the user table is still empty — bootstraps the `INITIAL_ADMIN_EMAIL` account as `admin`.
+6. Smoke test against the live URLs: log in as the bootstrapped admin, create a second (colleague) account, share an app with it, confirm the audit log (`docs/authentication.md`) shows the actions.
+
+As of the last update to this doc, steps 1-6 have been verified locally (real Docker Postgres + real Docker OpenFGA, not the production database) but **not yet run against the actual Render/Neon production environment** — see `docs/TODO.md` and `docs/HANDOFF.md` for current status.
 
 ## Path B — Self-hosted GitOps (Kubernetes/k3s + Argo CD)
 

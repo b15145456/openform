@@ -19,6 +19,18 @@ services:
         sync: false
       - key: AWS_REGION
         sync: false
+      - key: BETTER_AUTH_SECRET
+        sync: false
+      - key: BETTER_AUTH_URL
+        sync: false
+      - key: INITIAL_ADMIN_EMAIL
+        sync: false
+      - key: INITIAL_ADMIN_PASSWORD
+        sync: false
+      - key: FGA_API_URL
+        sync: false
+      - key: FGA_API_KEY
+        sync: false
 
   - type: web
     name: openform-frontend
@@ -32,3 +44,27 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+
+  # Authorization engine for per-app sharing (owner/editor/viewer). Uses the
+  # same Neon Postgres as the backend for persistent storage — otherwise the
+  # free plan's spin-down-on-idle would wipe every sharing grant on restart.
+  # Secured with a preshared key (OPENFGA_AUTHN_PRESHARED_KEYS) since this
+  # service is reachable at a public URL; without it, anyone could call its
+  # API directly and grant themselves owner access to any app.
+  - type: web
+    name: openform-fga
+    runtime: image
+    plan: free
+    image:
+      url: docker.io/openfga/openfga:latest
+    dockerCommand: run
+    healthCheckPath: /healthz
+    envVars:
+      - key: OPENFGA_DATASTORE_ENGINE
+        value: postgres
+      - key: OPENFGA_DATASTORE_URI
+        sync: false
+      - key: OPENFGA_AUTHN_METHOD
+        value: preshared
+      - key: OPENFGA_AUTHN_PRESHARED_KEYS
+        sync: false

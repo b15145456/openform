@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
 import { makeRecord } from '../../../shared/runtime.js';
+import { requireAppAccess } from '../auth/middleware.js';
+import { recordAudit } from '../audit.js';
 
 export const recordsRouter = Router({ mergeParams: true });
 
@@ -22,7 +24,7 @@ async function loadApp(appId, res) {
   return rows[0].spec;
 }
 
-recordsRouter.get('/', async (req, res, next) => {
+recordsRouter.get('/', requireAppAccess('viewer'), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       'SELECT * FROM records WHERE app_id = $1 ORDER BY created_at DESC',
@@ -34,7 +36,7 @@ recordsRouter.get('/', async (req, res, next) => {
   }
 });
 
-recordsRouter.post('/', async (req, res, next) => {
+recordsRouter.post('/', requireAppAccess('editor'), async (req, res, next) => {
   try {
     const def = await loadApp(req.params.appId, res);
     if (!def) return;
@@ -44,13 +46,20 @@ recordsRouter.post('/', async (req, res, next) => {
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [record.id, def.app.id, def.app.version, record.data, record.created_at, record.updated_at]
     );
+    await recordAudit(req, {
+      action: 'record.create',
+      entityType: 'record',
+      entityId: record.id,
+      appId: req.params.appId,
+      detail: { data: record.data },
+    });
     res.status(201).json(toResponse(rows[0]));
   } catch (e) {
     next(e);
   }
 });
 
-recordsRouter.put('/:recordId', async (req, res, next) => {
+recordsRouter.put('/:recordId', requireAppAccess('editor'), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `UPDATE records SET data = $1, updated_at = now()
@@ -58,19 +67,33 @@ recordsRouter.put('/:recordId', async (req, res, next) => {
       [req.body?.data ?? {}, req.params.recordId, req.params.appId]
     );
     if (!rows.length) return res.status(404).json({ error: 'record not found' });
+    await recordAudit(req, {
+      action: 'record.update',
+      entityType: 'record',
+      entityId: req.params.recordId,
+      appId: req.params.appId,
+      detail: { data: rows[0].data },
+    });
     res.json(toResponse(rows[0]));
   } catch (e) {
     next(e);
   }
 });
 
-recordsRouter.delete('/:recordId', async (req, res, next) => {
+recordsRouter.delete('/:recordId', requireAppAccess('editor'), async (req, res, next) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM records WHERE id = $1 AND app_id = $2', [
       req.params.recordId,
       req.params.appId,
     ]);
     if (!rowCount) return res.status(404).json({ error: 'record not found' });
+    await recordAudit(req, {
+      action: 'record.delete',
+      entityType: 'record',
+      entityId: req.params.recordId,
+      appId: req.params.appId,
+      detail: null,
+    });
     res.status(204).end();
   } catch (e) {
     next(e);

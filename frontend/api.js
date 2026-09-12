@@ -1,13 +1,23 @@
+import { getToken } from './auth-client.js';
+
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
+export class AuthError extends Error {}
+
 async function request(path, options = {}) {
+  const token = getToken();
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     ...options,
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `${res.status} ${res.statusText}`);
+    const message = body.error || `${res.status} ${res.statusText}`;
+    if (res.status === 401) throw new AuthError(message);
+    throw new Error(message);
   }
   if (res.status === 204) return null;
   return res.json();
@@ -24,6 +34,11 @@ export const api = {
   deleteRecord: (appId, recordId) => request(`/api/apps/${appId}/records/${recordId}`, { method: 'DELETE' }),
   requestUpload: (filename, contentType) =>
     request('/api/uploads', { method: 'POST', body: JSON.stringify({ filename, contentType }) }),
+  listAccess: (appId) => request(`/api/apps/${appId}/access`),
+  grantAccess: (appId, email, relation) =>
+    request(`/api/apps/${appId}/access`, { method: 'POST', body: JSON.stringify({ email, relation }) }),
+  revokeAccess: (appId, userId) => request(`/api/apps/${appId}/access/${userId}`, { method: 'DELETE' }),
+  listAuditLog: () => request('/api/audit-log'),
 };
 
 export async function uploadFile(file, onProgress) {
