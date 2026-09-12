@@ -1,5 +1,11 @@
 # OpenForm Progress
 
+## 2026-09-12 — Real Neon Postgres provisioned
+- Linked this repo to an actual Neon project (`aged-moon-84749721`, branch `production`) via the Neon CLI, replacing the "will need Neon/Render accounts" placeholder from earlier the same day.
+- Ran the real migration against it (tables created, mattress template seeded) and booted the backend against it, confirmed via `/healthz` and `/api/apps`.
+- Installed Neon's agent skills and MCP server for this machine/repo (`.claude/skills/`, global MCP config).
+- Remaining gap for a public URL is Render account setup only — the database side is done.
+
 ## 2026-09-12 — Frontend/backend split + database
 - Repo restructured into npm workspaces: `frontend/` (Vite static app), `backend/` (Express API), `shared/` (definition/record logic used by both).
 - Added Postgres persistence (`apps`, `records` tables) with automatic idempotent migration/seed on backend boot; localStorage-only persistence retired.

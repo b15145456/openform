@@ -1,5 +1,32 @@
 # OpenForm Handoff
 
+## 2026-09-12 — Neon Postgres 專案實際連上
+### 做了什麼
+- 全域安裝官方 Neon CLI（npm 套件 `neon`，`neonctl` 現在只是相容別名，兩者同一個 repo）。
+- `neon login`（`auth` 的別名）完成瀏覽器 OAuth，確認登入身分是 `b15145456@gmail.com`。
+- `neon skills -y`：把 Neon 官方 agent skills 裝進 `.claude/skills/`（neon、neon-postgres、neon-functions 等），連同 `skills-lock.json`。
+- `neon mcp -y`：把 hosted Neon MCP server（`https://mcp.neon.tech/mcp`）寫進 claude-code/gemini-cli/github-copilot-cli/vscode 的全域 MCP 設定，帳號層級 API key（沒有限定單一 project）。
+- `neon link --project-id aged-moon-84749721 --branch production -y`：把這個目錄連到已存在的 Neon 專案（org `org-calm-hall-14765228`），寫入 `.neon`（已加進 `.gitignore`，CLI 自己加的），並把 `DATABASE_URL`/`DATABASE_URL_UNPOOLED`/`NEON_BRANCH` 拉進 `.env.local`（同樣 gitignored，沒有進 git）。
+- `neon config init`：產生 `neon.ts` 起始版本，並在根目錄 `package.json` 加了 `@neon/config`、`@neon/env` 兩個 dependency。
+- 依指示把 `neon.ts` 改成最小版 `defineConfig({})`。
+- `neon deploy`（`config apply` 的別名）套用 policy 到 `production` branch：「No changes — branch production already matches the policy」。
+
+### 實際驗證
+- 用真正的 `DATABASE_URL`（來自 `.env.local`，不是假的）跑 `npm run backend:migrate`：成功在 Neon 上建立 `apps`/`records` 表並 seed 床墊範本。
+- 用同一組 `DATABASE_URL` 啟動 `backend/src/server.js`，curl `/healthz` 回 `ok`、`/api/apps` 回傳床墊範本，證明 backend ↔ 真實 Neon 資料庫這條路是通的，不只是本地 Docker Postgres 而已。
+- 驗證完把背景啟動的 node process 關掉，沒有留著佔用 port。
+
+### 現況
+上一則 HANDOFF 提到「免費部署設定檔已就緒，但尚未實際申請帳號」——Neon 的部分現在已經是真的了：專案 `aged-moon-84749721` / branch `production` 已建立並連上，`DATABASE_URL` 是真實可用的連線字串。`docs/deployment.md` Path A 已更新反映這件事。
+
+### 下一步
+1. Render 帳號還是要使用者自己申請、連 GitHub repo，把 `DATABASE_URL`（見上面）填進 Render 的 `openform-backend` 環境變數。
+2. 部署後做一次真正的 public URL mobile smoke test。
+3. `.neon`/`.env.local` 都在這台機器上，換一台機器要重新 `neon link` 或 `neon env pull`。
+
+### 卡關
+Render 帳號/部署仍需使用者親自操作，這個 session 沒有 Render 存取權限。
+
 ## 2026-09-12 — 前後端分離 + 資料庫
 ### 做了什麼
 - 拆成 `frontend/`（Vite 靜態前端）與 `backend/`（Express API），共用邏輯抽到 `shared/runtime.js`（validateDefinition/makeRecord/csvEscape，前後端都 import 同一份）。

@@ -7,7 +7,8 @@
 - [x] 建立基本 runtime tests。
 - [x] 取得 CI green 的實際證據（GitHub Actions run #11, commit c3861f5）。
 - [x] 前後端分離（`frontend/` + `backend/`）+ 接 Postgres 資料庫，取代 localStorage（本地以 Docker Postgres 驗證過 CRUD/CI 流程）。
-- [ ] 實際申請 Neon + Render 帳號、部署到公開 URL 並做 mobile smoke test（見 `docs/deployment.md` Path A；這個 session 只做到設定檔就緒，帳號申請需要使用者自己執行）。
+- [x] 實際建立 Neon Postgres 專案並連上（`neon link` 到 project `aged-moon-84749721` / branch `production`；`neon deploy` 套用 `neon.ts` policy；本機以真實 `DATABASE_URL` 跑過 migration + API smoke test，見 HANDOFF）。
+- [ ] Render 帳號申請、實際部署到公開 URL 並做 mobile smoke test（見 `docs/deployment.md` Path A；Render 那一步還沒做，需要使用者自己的 Render 帳號）。
 - [ ] 確認 GitHub Actions 上這次新增的 Postgres service container 測試真的能跑綠（本地驗證過，但還沒有實際 push 觸發過 CI）。
 
 ## P1 — Definition v1 完整度
