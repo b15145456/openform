@@ -1,5 +1,11 @@
 # OpenForm Progress
 
+## 2026-09-12 — Worked Record examples
+- Added canonical worked Record fixtures for Mattress, Workout, and Inspection under `examples/`.
+- Added CI regression tests that verify each fixture is an `openform/record/v1`, references the correct first-party Definition id/version, uses valid timestamps, and demonstrates nested Workout collections plus stable Inspection select values.
+- Updated the user guide to reflect the actual current product state: media upload UI and the verified Render public deployment are no longer listed as unfinished work.
+- Latest CI observed before this change was run #26, completed successfully for commit `5cee1e5`, followed by the GitOps promotion commit on `main`.
+
 ## 2026-09-12 — Input UX pass, upload diagnostics, read-only view
 - Diagnosed and fixed a real upload failure on the live deployment: missing object-storage credentials produced an opaque 500; the upload route now checks upfront and returns a clear 503.
 - Three input-experience improvements driven by actual usage: live (not submit-time) range hints for number/duration fields, `rating` as clickable number buttons instead of a raw input, and `autocomplete` suggestions on text fields sourced from the app's own existing records.

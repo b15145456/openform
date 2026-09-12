@@ -1,0 +1,35 @@
+{
+  "spec": "openform/record/v1",
+  "id": "rec_example_mattress",
+  "definition": {
+    "id": "mattress_quote",
+    "version": 2
+  },
+  "created_at": "2026-09-12T05:00:00.000Z",
+  "updated_at": "2026-09-12T05:00:00.000Z",
+  "data": {
+    "store": "Example Mattress Store",
+    "brand": "Example Brand",
+    "model": "Cloud Support 3000",
+    "size": "Queen",
+    "photo": "https://example.invalid/openform/mattress.jpg",
+    "price": 42800,
+    "all_in_price": 45000,
+    "materials": "Latex comfort layer with pocket springs",
+    "spring": "Pocket spring",
+    "zones": "7-zone",
+    "edge_support": 4,
+    "firmness": 6,
+    "back_support": 5,
+    "side_comfort": 4,
+    "motion_isolation": 5,
+    "breathability": 4,
+    "overall_comfort": 5,
+    "trial": "30 nights",
+    "returns": "Return fee applies",
+    "warranty": "10 years",
+    "indentation": "Coverage from 2 cm",
+    "delivery": "Included",
+    "notes": "Good pressure relief; compare with the firmer model."
+  }
+}
