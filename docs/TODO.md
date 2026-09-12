@@ -5,7 +5,7 @@
 - [x] Mattress CRUD + localStorage + JSON/CSV export。
 - [x] Definition YAML/JSON import + validation。
 - [x] 建立基本 runtime tests。
-- [ ] 取得 CI green 的實際證據。
+- [x] 取得 CI green 的實際證據（GitHub Actions run #11, commit c3861f5）。
 - [ ] 實際部署一個公開 URL 並做 mobile smoke test。
 
 ## P1 — Definition v1 完整度
