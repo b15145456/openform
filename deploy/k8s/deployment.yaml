@@ -21,7 +21,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: openform
-          image: ghcr.io/b15145456/openform:c3861f592eb09ca0e47c74befcfe6e6f42b1f970
+          image: ghcr.io/b15145456/openform:edb6387a00b7cd36501ed73051336950b32bcb65
           imagePullPolicy: IfNotPresent
           ports:
             - { name: http, containerPort: 8080 }
