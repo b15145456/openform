@@ -15,7 +15,6 @@ services:
   - type: web
     name: openform-frontend
     runtime: static
-    plan: free
     buildCommand: npm install && npm run build
     staticPublishPath: frontend/dist
     envVars:
