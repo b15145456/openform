@@ -12,9 +12,10 @@
 - [ ] 確認 GitHub Actions 上這次新增的 Postgres service container 測試真的能跑綠（本地驗證過，但還沒有實際 push 觸發過 CI）。
 
 ## P1 — Definition v1 完整度
-- [x] nested collection 視覺 editor（recursive add/remove/edit；等待 CI 驗證）。
+- [x] nested collection 視覺 editor（CI #14 已通過）。
 - [ ] image/video/audio/location/barcode/signature 專用 UI。
-- [ ] canonical JSON Schema + semantic registry + units validation（registry 已建立）。
+- [x] canonical Definition/Record JSON Schema。
+- [x] semantic registry + canonical unit runtime validation（等待此 commit CI 驗證）。
 - [x] Mattress / Workout / Inspection templates。
 - [ ] templates 對應 examples。
 
