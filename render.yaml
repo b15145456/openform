@@ -72,5 +72,13 @@ services:
         sync: false
       - key: OPENFGA_AUTHN_METHOD
         value: preshared
+      # OpenFGA opens its Prometheus metrics port (2112) before its HTTP API
+      # port (8080). Render auto-detects a single "primary" port from
+      # whichever the container opens first, so it was picking 2112 — which
+      # has no /healthz route — making the health check fail and Render
+      # restart the service in an endless loop. We don't use the metrics
+      # endpoint, so disabling it removes the ambiguity.
+      - key: OPENFGA_METRICS_ENABLED
+        value: "false"
       - key: OPENFGA_AUTHN_PRESHARED_KEYS
         sync: false
