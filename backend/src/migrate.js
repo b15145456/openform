@@ -112,8 +112,16 @@ async function seedTemplate(file) {
     [def.app.id, def]
   );
   // First-party starter templates are usable by every colleague by default,
-  // not gated behind per-app sharing like a user-created app would be.
-  await grantPublicAppAccess(def.app.id, 'editor');
+  // not gated behind per-app sharing like a user-created app would be. This
+  // is best-effort: OpenFGA is a separate service that can be temporarily
+  // unreachable (e.g. still cold-starting) independently of this backend, and
+  // that must not take down the whole backend boot — worst case the template
+  // just isn't publicly shared until a later restart succeeds.
+  try {
+    await grantPublicAppAccess(def.app.id, 'editor');
+  } catch (e) {
+    console.warn(`could not grant public access to ${def.app.id} (will retry on next restart): ${e.message}`);
+  }
 }
 
 async function bootstrapAdmin() {
